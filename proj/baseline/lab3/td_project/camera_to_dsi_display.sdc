@@ -33,3 +33,15 @@ set_clock_groups -asynchronous \
 #   -datapath_only is supported only by set_max_delay (SWUG105 4.4.21).
 # ============================================================
 set_max_delay -datapath_only -from [get_clocks {pll_clk_24m}] -to [get_clocks {HDMI_PIXEL_CLK}] 8.000
+
+# ============================================================
+# [AE 2026-10-12] ae_stat(60MHz ISP 域) -> ae_ctrl(24MHz) 准静态多 bit CDC
+# ae_stat 挂在 isp_top 里 awb 的输入侧，输出 5 组信号：
+#   O_luma_sum[39:0] / O_pix_cnt[31:0] / O_hi_cnt[31:0] / O_lo_cnt[31:0] / O_frame_tgl
+# 每帧只更新一次、之后保持约 16.7ms（60Hz）不变，属于准静态总线；
+# ae_ctrl 用 O_frame_tgl 的单 bit 翻转沿（内部 2 级同步 + 边沿检测）去采样数据，
+# 采样时刻比数据变化晚 3 个 24MHz 周期（125ns），远小于 16.7ms 的保持时间。
+# 这里只用 set_max_delay 给这条跨域总线一个上界（20ns），避免出现超长绕线；
+# 两组时钟已在上面 set_clock_groups -asynchronous 里声明互不相关，故不再做单周期检查。
+# ============================================================
+set_max_delay -datapath_only -from [get_clocks {MIPI_RX_BYTE_CLK}] -to [get_clocks {pll_clk_24m}] 20.000

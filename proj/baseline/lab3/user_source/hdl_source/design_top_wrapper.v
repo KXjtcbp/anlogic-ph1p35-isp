@@ -503,16 +503,14 @@ module design_top_wrapper (
 
   
 
-  ae_set u_ae_set (
-      .I_clk(S_24m_clk),
-      .I_rst(~S_rst_n),
-      .I_btn(4'b1111),   // ★AE/AG 手动键全部禁用★ 改 4 键后不能再接 I_button
-      .I_cam_cfg_done(S_cam_cfg_done),
-      .I_ae_cfg_done(S_ae_cfg_done),
-      .O_ae_req(S_ae_req),
-      .O_exposure_time(S_exposure_time),
-      .O_analog_gain(S_analog_gain)
-  );
+  //--------------------------------------------------------------------------
+  // [HDR-2026-10-12] 原厂的 ae_set.v（手动按键步进器）在此**不再例化**。
+  //   原因：它本来就是个"按一下 +1 档"的手动工具（`I_btn` 一直硬接 4'b1111 全松，
+  //   等于死代码），而且文件头自己标注了 3 处隐患（复位曝光 3000 超手册上限 1990、
+  //   复位后 r_exposure == r_exposure_set ⇒ r_ae_req 永不置位、按键会把非法曝光写进传感器）。
+  //   替代实现 ae_ctrl.v 见下面「SW3/SW4」一节之后；ae_set.v 文件仍留在工程里
+  //   （camera_to_dsi_display.al 不动它），需要时随时可以改回来。
+  //--------------------------------------------------------------------------
   
     // ---- [HDR-2026-10-10] SW3 / SW4（24MHz 域 2 级同步）----------------------------
     //   实测极性（与手册相反）：拨下 = 逻辑 1，拨上 = 逻辑 0。
@@ -543,8 +541,88 @@ module design_top_wrapper (
             S_sw4_sync1 <= S_sw4_sync0;
         end
     end
-    wire S_gain_high    = ~S_sw4_sync1;   // 复位默认 0 = 4.000×（厂商原值，安全默认）
+    // ★2026-10-12 起 SW4 不再是"模拟增益选择"，它的作用改为 AE 使能★
+    //   （原行 `wire S_gain_high = ~S_sw4_sync1;` 已删除，见下面 AE 一节的 S_ae_en）
     wire S_gain_digital = ~S_sw3_sync1;   // 复位默认 0 = ×1.000（复位默认，安全默认）
+
+    //==========================================================================
+    // [HDR-2026-10-12] ★自动曝光 AE★ —— SW4 从"模拟增益选择"改为"AE 使能"
+    //==========================================================================
+    //   为什么改 SW4：SW4 原来唯一的作用是选 4.000×/15.750×，而 AE 一旦上线，模拟增益
+    //   就必须由闭环连续控制；何况 SW3（数字 ×2）× SW4（模拟 ×1/×4）的四档组合本来
+    //   就只有 4 档、且必须断电重启才生效 —— 与评分标准里"光线剧烈变化时工作正常"
+    //   这条直接冲突。改后 SW4 只当总开关：
+    //     SW4 拨上（读到逻辑 0）⇒ S_ae_en = 1 ⇒ AE 闭环运行
+    //     SW4 拨下 / 悬空       ⇒ S_ae_en = 0 ⇒ AE 冻结在当前档
+    //   （复位默认 S_sw4_sync1 = 1 ⇒ S_ae_en = 0，安全默认，绝不会一上电就乱动。）
+    //
+    //   ★首次烧录后画面会比现在暗约 1/4，这是预期行为、不是坏了★：
+    //     上电默认 = 模拟 {0x0F,0x20} = 4.000× × 数字（SW3 上）2.000× = 8.000×，
+    //     而改之前 SW4上+SW3上 = 15.750 × 2.000 = 31.500×。
+    //     AE 会在约 0.5s（30 帧）内把模拟增益爬回 15.750×，画面随之变亮。
+    //     把 SW4 拨下等 1 秒再拨上，可以看到 AE 重新爬升的全过程。
+    //
+    //   ★统计点为什么在 isp_top 里★：见 isp_top.v 的 ae_stat 例化处 —— 它挂在 awb
+    //     的输入侧（去马赛克之后、白平衡与 S 曲线之前），保证 AE 与 AWB 解耦、
+    //     且拨 SW2 开关 S 曲线不会让 AE 的目标亮度漂移。
+    //==========================================================================
+    wire        S_ae_en = ~S_sw4_sync1;   // 复位默认 S_sw4_sync1 = 1 ⇒ S_ae_en = 0（冻结）
+
+    // ae_stat 的全部输出（60MHz ISP 域，准静态）
+    wire [39:0] S_ae_stat_lsum;
+    wire [31:0] S_ae_stat_pix;
+    wire [31:0] S_ae_stat_hi;
+    wire [31:0] S_ae_stat_lo;
+    wire        S_ae_stat_tgl;
+
+    // 准静态多 bit CDC：数据每帧只变一次并保持约 16.7ms，本域打 1 拍即可。
+    // 采样时刻由 ae_ctrl 内部对 S_ae_stat_tgl 做 2 级同步 + 边沿检测决定，
+    // 比数据变化时刻晚 3 个 24MHz 周期（125ns），数据早已稳定。
+    // （同步链本身在 ae_ctrl 里；这里只做"把 60MHz 域的组合输出落到本域寄存器"。）
+    reg [39:0] S_ae_lsum_r;
+    reg [31:0] S_ae_pix_r, S_ae_hi_r, S_ae_lo_r;
+    always @(posedge S_24m_clk or negedge S_rst_n) begin
+        if (!S_rst_n) begin
+            S_ae_lsum_r <= 40'd0;
+            S_ae_pix_r  <= 32'd0;
+            S_ae_hi_r   <= 32'd0;
+            S_ae_lo_r   <= 32'd0;
+        end
+        else begin
+            S_ae_lsum_r <= S_ae_stat_lsum;
+            S_ae_pix_r  <= S_ae_stat_pix;
+            S_ae_hi_r   <= S_ae_stat_hi;
+            S_ae_lo_r   <= S_ae_stat_lo;
+        end
+    end
+
+    wire [7:0]  S_ae_meas;    // 回读：本帧实测帧均值（供 ChipWatcher / 将来的 OSD）
+    wire [6:0]  S_ae_gi;      // 回读：当前增益索引 0..127
+    wire [1:0]  S_ae_state;   // 0=等init表/表下载中 1=稳定计时中 2=闭环运行 3=冻结
+
+    ae_ctrl #(
+        .TARGET_MEAN    (8'd70     ),   // ★目标帧均值 ≈70（8bit 线性亮度域）★
+        .NOM_PIX        (32'd921600),   // 230400 拍 × 4 像素/拍
+        .EXPOSURE_FIXED (16'd1990  ),   // 2×VTS−10；720p60 下再长会掉帧，曝光没有余量
+        .GAIN_IDX_INIT  (7'd64     )    // = {0x0F,0x20} = 4.000×（厂商原值，安全默认）
+    ) u_ae_ctrl (
+        .I_clk          (S_24m_clk     ),
+        .I_rst_n        (S_rst_n       ),
+        .I_ae_en        (S_ae_en       ),
+        .I_stat_tgl     (S_ae_stat_tgl ),   // 原始翻转信号，内部自带 2 级同步 + 边沿检测
+        .I_luma_sum     (S_ae_lsum_r   ),
+        .I_pix_cnt      (S_ae_pix_r    ),
+        .I_hi_cnt       (S_ae_hi_r     ),
+        .I_lo_cnt       (S_ae_lo_r     ),
+        .I_cam_cfg_done (S_cam_cfg_done),
+        .I_ae_cfg_done  (S_ae_cfg_done ),
+        .O_ae_req       (S_ae_req      ),
+        .O_exposure_time(S_exposure_time),
+        .O_analog_gain  (S_analog_gain ),
+        .O_meas_luma    (S_ae_meas     ),
+        .O_gain_idx     (S_ae_gi       ),
+        .O_state        (S_ae_state    )
+    );
 
     // ---- [HDR-2026-10-11i] SW1/SW2 同步器声明提前到此 ----------------
     //   因为下面 S_gain_applied 要比较 {S_sw1_sync1,...,S_sw4_sync1}；它们的 always 块仍在后部 SW1/SW2 那一节。
@@ -621,7 +699,7 @@ module design_top_wrapper (
       .O_cam_scl(O_cam_scl),  //I2C总线，SCL时钟
       .IO_cam_sda(IO_cam_sda),  //I2C总线，SDA数据
       .I_test_pattern(1'b0),             // [HDR-2026-10-11i] ★永久关闭测试图★ 原来接 S_tp_canary（四开关全上 = 1），而四开关全上正是出厂推荐工作档 (SW1上=黑电平开、SW2上=曲线开、SW3上=×2.000、SW4上=15.750×) ⇒ 自检钩子被正常使用点开，且只有 SW3/SW4 变化才重下发，一旦点开就卡死。运行时 I2C 写通路已由增益梯与曲线 A/B 证明是通的，不再需要这个钩子。
-      .I_gain_high(S_gain_high),         // [HDR-2026-10-10c] SW4：模拟增益 4.000×/15.750×
+      .I_gain_high(1'b0),                // [HDR-2026-10-12] AE 接管模拟增益 ⇒ 本端口不再使用（改前接 S_gain_high）
       .I_gain_digital(S_gain_digital),   // [HDR-2026-10-10c] SW3：数字增益 ×1.000/×2.000（0x3e06）
       .O_cfg_done(S_cam_cfg_done),  //摄像头寄存器初始化完成
       .O_ae_cfg_done(S_ae_cfg_done)  //AE配置完成
@@ -819,7 +897,13 @@ isp_top u_isp_top (
 .I_algo_mode     (S_algo_mode),
 // [HDR-2026-10-10] SW1/SW2 旁路控制（已在 S_csi_rx_clk 域做过 2 级同步）
 .I_blk_bypass    (S_blk_bypass  ),
-.I_gamma_bypass  (S_gamma_bypass)
+.I_gamma_bypass  (S_gamma_bypass),
+// [HDR-2026-10-12] AE 帧统计输出（60MHz ISP 域，准静态），送下面 u_ae_ctrl
+.O_ae_luma_sum   (S_ae_stat_lsum),
+.O_ae_pix_cnt    (S_ae_stat_pix ),
+.O_ae_hi_cnt     (S_ae_stat_hi  ),
+.O_ae_lo_cnt     (S_ae_stat_lo  ),
+.O_ae_frame_tgl  (S_ae_stat_tgl )
   );
 
 

@@ -40,7 +40,22 @@ module isp_top (
     //   I_gamma_bypass: SW2，1 = S 曲线【直通】，0 = 启用 S 曲线
     //   复位期间顶层把这两根都拉成 1 ⇒ 上电老行为，绝不会「一上电就变样」。
     input           I_blk_bypass    ,
-    input           I_gamma_bypass
+    input           I_gamma_bypass  ,
+    //--------------------------------------------------------------------------
+    // [HDR-2026-10-12] AE（自动曝光）帧统计输出
+    //   全部在本模块 axi4s_video_aclk（= S_csi_rx_clk，60MHz）域；每帧只更新一次、
+    //   之后保持约 16.7ms 不变 ⇒ 准静态跨域；顶层用 O_ae_frame_tgl（每帧末翻转）
+    //   这个单 bit 的上升/下降沿去采样它们。
+    //   统计点 = awb 的输入（m_axis_tdata_96 / m_axis_tvalid / m_axis_tuser），即
+    //   「去马赛克之后、白平衡与 S 曲线之前」：
+    //     · 在 awb 之前 ⇒ AE 与 AWB 互不耦合（AWB 调 gain 不改变 AE 的观测量）；
+    //     · 在 isp_gamma 之前 ⇒ 拨 SW2 开关 S 曲线不会让 AE 的目标亮度漂移。
+    //--------------------------------------------------------------------------
+    output [39:0]   O_ae_luma_sum   ,
+    output [31:0]   O_ae_pix_cnt    ,
+    output [31:0]   O_ae_hi_cnt     ,
+    output [31:0]   O_ae_lo_cnt     ,
+    output          O_ae_frame_tgl
 );
  
 wire         m_axis_tvalid;  //synthesis keep 
@@ -166,6 +181,25 @@ u_demosaic
 data128_96 u_data128_96 (
     .I_tdata(m_axis_tdata),
     .O_tdata(m_axis_tdata_96)
+);
+
+//------------------------------------------------------------------------------
+// [HDR-2026-10-12] AE 帧统计器 —— 与 u_awb 并联挂在同一条 96bit 码流上
+//   挂在 awb 的输入侧（而不是输出侧）：AE 与 AWB 互不耦合。
+//   本模块只读不写数据通路，不产生任何反压（无 I_tready），完全被动监听。
+//   零乘法（77/150/29 全部拆移位加法）⇒ 不占 DSP；无 ERAM。
+//------------------------------------------------------------------------------
+ae_stat u_ae_stat (
+    .I_clk       (axi4s_video_aclk),
+    .I_rst_n     (I_rst_n         ),
+    .I_tvalid    (m_axis_tvalid   ),
+    .I_tuser     (m_axis_tuser    ),
+    .I_tdata     (m_axis_tdata_96 ),
+    .O_luma_sum  (O_ae_luma_sum   ),
+    .O_pix_cnt   (O_ae_pix_cnt    ),
+    .O_hi_cnt    (O_ae_hi_cnt     ),
+    .O_lo_cnt    (O_ae_lo_cnt     ),
+    .O_frame_tgl (O_ae_frame_tgl  )
 );
 
 awb #(

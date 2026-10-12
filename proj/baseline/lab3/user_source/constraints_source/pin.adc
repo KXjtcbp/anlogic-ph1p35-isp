@@ -19,12 +19,16 @@ set_pin_assignment	{ O_tmds_ch2_p }		{ LOCATION = H14; IOSTANDARD = TMDS33; PULL
 set_pin_assignment	{ O_tmds_clk_p }		{ LOCATION = C17; IOSTANDARD = TMDS33; PULLTYPE = NONE; }
 
 # [HDR-2026-10-10] On-board DIP switches SW1-SW4 (board manual: up=1, down=0)
+#   ★实测极性（与手册相反）: 拨下 = 逻辑 1，拨上 = 逻辑 0★（RTL 里用 ~sync 还原语义）
 #   SW1=A4  : black-level subtraction bypass (1=through/legacy, 0=enable subtraction)
 #   SW2=B4  : S-curve (gamma) bypass          (1=through/legacy, 0=enable S-curve)
-#   SW3=E11 : RETIRED (was sensor gray-ramp test pattern; pin measured stuck at 0
-#             in both switch positions, so the hook is hard-tied to 0. LED3 = level only)
-#   SW4=D11 : analog gain select (1=11.25x, 0=4.000x); init-table only, needs reset
-#   PULLUP: unpopulated or floating pin reads 1 = bypass = legacy behaviour (safe default)
+#   SW3=E11 : digital gain select (up=0 => x2.000 / 0x3e06=0x01; down/float=1 => x1.000)
+#   SW4=D11 : [HDR-2026-10-12] AUTO EXPOSURE (AE) enable
+#             up   = logic 0 = ~S_sw4_sync1 = 1 = AE closed-loop RUNNING
+#             down / floating = logic 1 = AE FROZEN at the current gain index
+#             (was "analog gain select 4.000x/15.750x" before AE landed; AE now owns
+#              the analog gain continuously, so that manual switch no longer exists)
+#   PULLUP: unpopulated or floating pin reads 1 = AE frozen / bypass = safe default
 set_pin_assignment	{ I_switch[0] }			{ LOCATION = A4;  IOSTANDARD = LVCMOS33; PULLTYPE = PULLUP; }
 set_pin_assignment	{ I_switch[1] }			{ LOCATION = B4;  IOSTANDARD = LVCMOS33; PULLTYPE = PULLUP; }
 set_pin_assignment	{ I_switch[2] }			{ LOCATION = E11; IOSTANDARD = LVCMOS33; PULLTYPE = PULLUP; }
