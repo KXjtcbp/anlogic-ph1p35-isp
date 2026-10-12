@@ -84,7 +84,10 @@ module ae_ctrl #(
     // ---- 观测（OSD / ChipWatcher 用）----
     output reg  [7:0]  O_meas_luma,       // 上一帧实测平均亮度（≈真值 *0.989）
     output reg  [6:0]  O_gain_idx,        // 当前生效的增益索引
-    output reg  [1:0]  O_state            // 0=等配置 1=稳定中 2=闭环中 3=冻结
+    output reg  [1:0]  O_state,           // 0=等配置 1=稳定中 2=闭环中 3=冻结
+
+    // ---- [HDR-2026-10-12m] 第二行遥测：AE 决策链内部量（纯只读观测）----
+    output wire [33:0] O_dbg2
 );
 
     //=========================================================================
@@ -292,5 +295,15 @@ module ae_ctrl #(
             end
         end
     end
+
+    //=========================================================================
+    // 5. [HDR-2026-10-12m] 第二行遥测总线（纯观测，不参与任何逻辑）
+    //    [33:27] S_gi_inc   [26:20] S_gi_dec   [19:13] S_gi_next
+    //    [12:5]  S_settle   [4] S_can_act  [3] S_frame_ok  [2] S_req_pend
+    //    [1] I_ae_cfg_done  [0] I_cam_cfg_done
+    //    目的：AE"闭环但增益不动"到底卡在哪个与条件上，看一眼就知道。
+    //=========================================================================
+    assign O_dbg2 = { S_gi_inc, S_gi_dec, S_gi_next, S_settle,
+                      S_can_act, S_frame_ok, S_req_pend, I_ae_cfg_done, I_cam_cfg_done };
 
 endmodule
