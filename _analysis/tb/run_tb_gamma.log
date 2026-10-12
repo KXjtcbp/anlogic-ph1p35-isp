@@ -1,0 +1,18 @@
+﻿Reading E:/modelsim/modelsim_ase/tcl/vsim/pref.tcl
+
+# 10.3c
+
+# vsim -c -quiet gwork.tb_gamma_lut -do "run -all; quit -f" 
+# Start time: 23:43:50 on Oct 10,2026
+# run -all
+# [1] bypass=1 ?????�� 6 ???
+#   PASS: 000 2a ec ff 12 55 ?????����??��??
+# [2] bypass=0 ?????�� 256 ???
+#   ???��?����???????????��??��????�� = 0
+#   12 ��??��????????��???????��   = 0
+#   ��?????: 0->00 4->19 8->24 42->52 64->65 118->89 160->a0 200->b7 236->d5 255->ff
+# ==== ALL PASS ====
+# ** Note: $finish    : E:/FPGA/_analysis/tb/tb_gamma_lut.v(142)
+#    Time: 2735 ns  Iteration: 1  Instance: /tb_gamma_lut
+# End time: 23:43:50 on Oct 10,2026, Elapsed time: 0:00:00
+# Errors: 0, Warnings: 0

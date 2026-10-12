@@ -1,0 +1,70 @@
+m255
+K4
+z2
+13
+!s112 1.1
+!i10d 8192
+!i10e 25
+!i10f 100
+cModel Technology
+Z0 dE:/FPGA
+vdesign_top_wrapper
+Z1 !s110 1791637276
+!i10b 1
+!s100 O50TBjUe]X:R;:b8W]fRU0
+I0o0?chk0Y1hRI@obICW<n3
+Z2 V`JN@9S9cnhjKRR_L]QIcM3
+R0
+Z3 w1791637251
+8E:\FPGA\proj\baseline\lab3\user_source\hdl_source\design_top_wrapper.v
+FE:\FPGA\proj\baseline\lab3\user_source\hdl_source\design_top_wrapper.v
+L0 25
+Z4 OV;L;10.3c;59
+r1
+!s85 0
+31
+!s108 1791637276.631000
+!s107 E:\FPGA\proj\baseline\lab3\user_source\hdl_source\design_top_wrapper.v|
+!s90 -quiet|-work|E:\FPGA\_analysis\wl_agc|E:\FPGA\proj\baseline\lab3\user_source\hdl_source\design_top_wrapper.v|
+!i113 1
+Z5 o-quiet -work {E:\FPGA\_analysis\wl_agc}
+vuicfgcs500_720p
+R1
+!i10b 1
+!s100 Dh4KO5I<dgVDZ@SKAWO>M0
+INMKLBzZWU8PUPC<Vm3LYZ1
+R2
+R0
+w1791637268
+8E:\FPGA\proj\baseline\lab3\user_source\hdl_source\uics500_cfg\uicfgcs500_720p.v
+FE:\FPGA\proj\baseline\lab3\user_source\hdl_source\uics500_cfg\uicfgcs500_720p.v
+L0 19
+R4
+r1
+!s85 0
+31
+!s108 1791637276.572000
+!s107 E:\FPGA\proj\baseline\lab3\user_source\hdl_source\uics500_cfg\uicfgcs500_720p.v|
+!s90 -quiet|-work|E:\FPGA\_analysis\wl_agc|E:\FPGA\proj\baseline\lab3\user_source\hdl_source\uics500_cfg\uicfgcs500_720p.v|
+!i113 1
+R5
+vuics500reg_720p60
+R1
+!i10b 1
+!s100 gz<@la]eVR^W?83>1Ih]:2
+I^V^h9N7U_ndFQ3RfM^05Z2
+R2
+R0
+R3
+8E:\FPGA\proj\baseline\lab3\user_source\hdl_source\uics500_cfg\uics500reg_720p60.v
+FE:\FPGA\proj\baseline\lab3\user_source\hdl_source\uics500_cfg\uics500reg_720p60.v
+L0 32
+R4
+r1
+!s85 0
+31
+!s108 1791637276.491000
+!s107 E:\FPGA\proj\baseline\lab3\user_source\hdl_source\uics500_cfg\uics500reg_720p60.v|
+!s90 -quiet|-work|E:\FPGA\_analysis\wl_agc|E:\FPGA\proj\baseline\lab3\user_source\hdl_source\uics500_cfg\uics500reg_720p60.v|
+!i113 1
+R5

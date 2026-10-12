@@ -1,0 +1,42 @@
+
+===== page 1 =====
+5
+5
+4
+4
+3
+3
+2
+2
+1
+1
+D D
+C C
+B B
+A A
+PAGE01 PAGE03 PAGE04 PAGE05 PAGE06 PAGE07 PAGE08 PAGE09 PAGE10
+TITLE FPGA POWER JTAG,UART DIG_LED GPIO HDMI
+PH1P35_FT V1
+PAGE00 PAGE02
+EX_DEVICE ETHERENT MIPI_CSI
+Title
+Size Document Number Rev
+Date: Sheet of
+<Doc> <RevCode>
+P00_TITLE
+A4
+11 2Thursday, April 03, 2025
+Title
+Size Document Number Rev
+Date: Sheet of
+<Doc> <RevCode>
+P00_TITLE
+A4
+11 2Thursday, April 03, 2025
+Title
+Size Document Number Rev
+Date: Sheet of
+<Doc> <RevCode>
+P00_TITLE
+A4
+11 2Thursday, April 03, 2025

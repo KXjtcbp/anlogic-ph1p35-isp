@@ -1,0 +1,248 @@
+### 4.1.10 (last occurrence at 21456)
+4.1.10 launch_runs 
+启动multi runs 
+命令参数： 
+launch_runs [-step <design/rtl/gate/place/route/bitgen>] [-jobs <int>] <run_name_lis
+t> 
+参数释义： 
+-step <design/rtl/gate/place/route/bitgen>: 
+（可选）启动 run 运行到指定step。可取值为design,rtl,gate,place,route,bitgen。当不
+使用此选项时，syn 默认运行到gate step，phy 默认运行到bitgen step。 
+-jobs <int>： 
+（可选）设置最大并行数量。其取值范围为1-6。默认为1。 
+run_name_list： 
+（必选）待启动run 的名字。若为一次性启动多个run， 则写在大括号{}内， 不同run name 之
+间以空格分隔。 
+命令示例： 
+launch_runs {phy_1 phy_2} -jobs 2 
+4.1.11 open_run 
+打开指定run 当前运行完的step 的db。 
+命令参数： 
+open_run <run_name> 
+参数释义： 
+run_name： 
+（必选）指定要打开db 的run 的名字 
+命令示例： 
+open_run syn_1 
+  
+<<<page 23>>>
+ 
+ 
+TangDynasty® TCL Command User Guide  
+SWUG105_1.0 www.anlogic.com 17 
+2024.11   
+ 
+4.1.1
+
+### 4.1.11 (last occurrence at 21914)
+4.1.11 open_run 
+打开指定run 当前运行完的step 的db。 
+命令参数： 
+open_run <run_name> 
+参数释义： 
+run_name： 
+（必选）指定要打开db 的run 的名字 
+命令示例： 
+open_run syn_1 
+  
+<<<page 23>>>
+ 
+ 
+TangDynasty® TCL Command User Guide  
+SWUG105_1.0 www.anlogic.com 17 
+2024.11   
+ 
+4.1.12 wait_run 
+等待当前run 结束再进行下一个命令。默认在等待过程中会不断输出信息。 
+命令参数： 
+wait_run [-quiet] <run_name> 
+参数释义： 
+-quiet: 
+（可选）关闭打印输出。若不是用此选项，则默认在等待过程中不断输出打印信息。 
+run_name： 
+（必选）当前正在运行的run 的名字 
+命令示例： 
+wait_run syn_1 
+4.1.13 reset_runs 
+回退指定的run。默认回退run 至初始状态。 
+命令参数： 
+reset_runs <run_name_list> [-prev_step] [-f] 
+参数释义： 
+run_name_list： 
+（必选）待回退run 的名字。 若为一次性回退多个run， 则写在大括号{}内， 不同run name 之
+间以空格分隔。 
+-prev_step： 
+（可选）使用此选项时，将run 仅回退至前一个步骤。不使用此选项时，回退至初始状态。 
+-f： 
+（可选）将该 run 的文件夹删除，
+
+### 4.1.12 (last occurrence at 22151)
+4.1.12 wait_run 
+等待当前run 结束再进行下一个命令。默认在等待过程中会不断输出信息。 
+命令参数： 
+wait_run [-quiet] <run_name> 
+参数释义： 
+-quiet: 
+（可选）关闭打印输出。若不是用此选项，则默认在等待过程中不断输出打印信息。 
+run_name： 
+（必选）当前正在运行的run 的名字 
+命令示例： 
+wait_run syn_1 
+4.1.13 reset_runs 
+回退指定的run。默认回退run 至初始状态。 
+命令参数： 
+reset_runs <run_name_list> [-prev_step] [-f] 
+参数释义： 
+run_name_list： 
+（必选）待回退run 的名字。 若为一次性回退多个run， 则写在大括号{}内， 不同run name 之
+间以空格分隔。 
+-prev_step： 
+（可选）使用此选项时，将run 仅回退至前一个步骤。不使用此选项时，回退至初始状态。 
+-f： 
+（可选）将该 run 的文件夹删除，只在不使用-prev_step 选项时生效。 
+命令示例： 
+reset_runs {phy_1 phy_2} 
+  
+<<<page 24>>>
+ 
+ 
+TangDynasty® TCL Command User Guide  
+SWUG105_1.0 www.anlogic.com 18 
+2024.11   
+ 
+4.1.14 set_param 
+设置各step 的参数。 
+命令参数： 
+set_param [-run <run_name>] <step_nam
+
+### 4.1.13 (last occurrence at 22351)
+4.1.13 reset_runs 
+回退指定的run。默认回退run 至初始状态。 
+命令参数： 
+reset_runs <run_name_list> [-prev_step] [-f] 
+参数释义： 
+run_name_list： 
+（必选）待回退run 的名字。 若为一次性回退多个run， 则写在大括号{}内， 不同run name 之
+间以空格分隔。 
+-prev_step： 
+（可选）使用此选项时，将run 仅回退至前一个步骤。不使用此选项时，回退至初始状态。 
+-f： 
+（可选）将该 run 的文件夹删除，只在不使用-prev_step 选项时生效。 
+命令示例： 
+reset_runs {phy_1 phy_2} 
+  
+<<<page 24>>>
+ 
+ 
+TangDynasty® TCL Command User Guide  
+SWUG105_1.0 www.anlogic.com 18 
+2024.11   
+ 
+4.1.14 set_param 
+设置各step 的参数。 
+命令参数： 
+set_param [-run <run_name>] <step_name> <param> <value> 
+参数释义： 
+-run <run_name>: 
+（可选）指定将参数设置到某一个run 中。在GUI Console 或multi_run 模式的脚本中此项为
+必选项，  
+step_name： 
+（必选）指定 step， 可取值为flow，design，rtl，gate，place，route，timing，sim，bitgen 
+param： 
+（必选）
+
+### 4.1.19 (last occurrence at 25577)
+4.1.19 save_best_bits 
+在多个runs 的结果中选择时序最佳的bitgen 结果文件， 复制到<project_name>_Runs/best_result
+目录下。 
+命令参数： 
+save_best_bits 
+4.1.20 save_design 
+Open Run 后，若在 Console 中运行Tcl 命令对design 做了修改，可使用save_design 命令将修改
+保存到对应的db 文件中，使修改内容在后续的运行步骤中生效。 
+命令参数： 
+save_design 
+4.1.21 generate_elaborate_package 
+产生 elaborated db 文件包。此文件包中包含 elaborate.db，约束文件和运行脚本。输出文件路
+径为<project directory>/elaborate_package/<project_name>_elaborate.db。 
+使用步骤：工程active syn 至少运行到read_design, open_run 后在Console 中运行此命令。 
+注：原工程中的参数设置在产生的elaborate db 中会恢复默认值。 
+命令参数： 
+generate_elaborate_package 
+  
+<<<page 28>>>
+ 
+ 
+TangDynasty® TCL Command User Guide  
+SWUG105_1.0 www.anlogic.com 22 
+2024.11   
+ 
+4.2 Syn/Phy Properties 设置 
+TD User Guide
+
+### 4.1.3  (last occurrence at 18681)
+4.1.3 open_project 
+通过.al 文件打开工程，默认以multi_run 模式打开。 
+命令参数： 
+open_project [-single_run] <project_file> 
+参数释义： 
+project_file:  
+（必选）.al 文件的绝对路径或相对路径及文件名。 
+-single_run:  
+（可选）是否以single_run 模式打开工程。若不使用此选项，则为默认multi_run 模式。 
+注： 
+ .al 文件目录（除目录分隔符“/”以外）禁用以下字符：*\/|:”?<>C 且不能以数字开头。 
+ .al 文件名禁用以下字符：*\/|:”?<>CS 且不能以数字开头。 
+命令示例： 
+<<<page 18>>>
+ 
+ 
+TangDynasty® TCL Command User Guide  
+SWUG105_1.0 www.anlogic.com 12 
+2024.11   
+ 
+打开tcl 脚本所在目录下的example.al 工程： 
+open_project ./example.al 
+4.1.4 close_project 
+关闭当前工程。 
+命令参数： 
+close_project 
+4.1.5 top_module 
+工程模式下，设置design 的top module 名字。 
+命令参数： 
+top_module 
+4.1.6 add_files 
+向工程中添加文件，可以添加HDL 代码源文件，adc 或 sdc 约束文件，ip 文件。 
+命令参数： 
+add_files [-list <.list/.slist 
+
+### 4.1.4  (last occurrence at 19159)
+4.1.4 close_project 
+关闭当前工程。 
+命令参数： 
+close_project 
+4.1.5 top_module 
+工程模式下，设置design 的top module 名字。 
+命令参数： 
+top_module 
+4.1.6 add_files 
+向工程中添加文件，可以添加HDL 代码源文件，adc 或 sdc 约束文件，ip 文件。 
+命令参数： 
+add_files [-list <.list/.slist file>] [<file_path_name>] 
+参数释义： 
+-list <.list/.slist file>:  
+（可选）指定列表文件.list 或.slist 来添加源文件。其中.list 文件由GUI project 中导出
+（Project -> Export -> Export Soource File List）；.slist 文件由用户创建，使用.slist
+添加源文件无法指定fileset。格式如下： 
+<absolute or relative path>/<file1 name> 
+<absolute or relative path>/<file2 name> 
+<absolute or relative path>/<file2 name> 
+…… 
+其中，相对路径以.al 文件所在路径为当前目录。以下为.slist 内容的一个例子： 
+./src/define.v 
+./src/top.v 
+<<<page 19>>>
+ 
+ 
+TangDynasty® TCL Command User Guide  
+SW

@@ -1,0 +1,54 @@
+﻿
+=== E:\FPGA\proj\baseline\lab3\user_source\hdl_source\isp\raw10_unpacket_2lane.v  (11497 B, 256 ��, ��ע�� 3 ��)
+    ��ע��: �� 4 �� .. �� 42 ��  (2511 �ֽ�)
+    ��ע��: �� 43 �� .. �� 45 ��  (170 �ֽ�)
+    ��ע��: �� 161 �� .. �� 253 ��  (2928 �ֽ�)
+    [x] I_camera_black_level       6 �� -> L8(ע����), L56, L178(ע����), L179(ע����)
+    [x] >> 2                       4 �� -> L178(ע����), L179(ע����), L180(ע����), L181(ע����)
+    [ ] >>2                      0 ��
+    [x] O_raw8                     3 �� -> L176(ע����), L187(ע����), L193(ע����)
+    [x] S_fifo_rd_data             6 �� -> L77, L178(ע����), L179(ע����), L180(ע����)
+    [x] black_level                6 �� -> L8(ע����), L56, L178(ע����), L179(ע����)
+    [x] O_raw10_data               3 �� -> L5(ע����), L61, L154
+    [ ] assign O_raw10           0 ��
+    [x] module                     1 �� -> L47
+    [x] endmodule                  1 �� -> L255
+    [x] fifo                      32 �� -> L7(ע����), L72, L73, L74
+    [x] FIFO                       2 �� -> L4, L160
+    �˿�: I_clk, I_rst_n, I_csi_frame_start, I_csi_frame_end, I_csi_valid, I_csi_data, I_camera_black_level, O_raw10_frame_start, O_raw10_frame_end, O_raw10_valid, O_raw10_data
+
+=== E:\FPGA\proj\baseline\lab3\user_source\hdl_source\uiisp_beta\raw10_unpacket_2lane.v  (8435 B, 236 ��, ��ע�� 3 ��)
+    ��ע��: �� 1 �� .. �� 28 ��  (966 �ֽ�)
+    ��ע��: �� 29 �� .. �� 31 ��  (170 �ֽ�)
+    ��ע��: �� 141 �� .. �� 233 ��  (2771 �ֽ�)
+    [x] I_camera_black_level       5 �� -> L42, L158(ע����), L159(ע����), L160(ע����)
+    [x] >> 2                       4 �� -> L158(ע����), L159(ע����), L160(ע����), L161(ע����)
+    [ ] >>2                      0 ��
+    [x] O_raw8                     3 �� -> L156(ע����), L167(ע����), L173(ע����)
+    [x] S_fifo_rd_data             6 �� -> L62, L158(ע����), L159(ע����), L160(ע����)
+    [x] black_level                5 �� -> L42, L158(ע����), L159(ע����), L160(ע����)
+    [x] O_raw10_data               2 �� -> L47, L135
+    [ ] assign O_raw10           0 ��
+    [x] module                     1 �� -> L33
+    [x] endmodule                  1 �� -> L235
+    [x] fifo                      31 �� -> L57, L58, L59, L62
+    [ ] FIFO                     0 ��
+    �˿�: I_clk, I_rst_n, I_csi_frame_start, I_csi_frame_end, I_csi_valid, I_csi_data, I_camera_black_level, O_raw10_frame_start, O_raw10_frame_end, O_raw10_valid, O_raw10_data
+
+=== E:\FPGA\proj\baseline\lab3\user_source\hdl_source\raw10_unpacket.v  (10644 B, 261 ��, ��ע�� 0 ��)
+    [x] I_camera_black_level       6 �� -> L12, L121, L236, L237
+    [x] >> 2                       4 �� -> L236, L237, L238, L239
+    [ ] >>2                      0 ��
+    [x] O_raw8                     8 �� -> L123, L124, L125, L126
+    [x] S_fifo_rd_data             7 �� -> L32, L139, L236, L237
+    [x] black_level                6 �� -> L12, L121, L236, L237
+    [x] O_raw10_data               2 �� -> L17, L105
+    [ ] assign O_raw10           0 ��
+    [x] module                     1 �� -> L3
+    [x] endmodule                  1 �� -> L261
+    [x] fifo                      27 �� -> L27, L28, L29, L32
+    [ ] FIFO                     0 ��
+
+=== .al ���� raw10 ��ص���Ŀ ===
+    <File Path="../user_source/hdl_source/isp/csi_unpacket_2lane.v">
+    <File Path="../user_source/hdl_source/isp/raw10_unpacket_2lane.v">

@@ -1,0 +1,35 @@
+# ---------- TD 编译产物（可重建，体积大） ----------
+**/camera_to_dsi_display_Runs/
+**/camera_to_dsi_display.prj
+**/log/
+**/.IpToolIpDataBackupDir_*/
+*.bit
+*.bid
+*.bin
+*.aje
+*.svf
+*.db
+
+# 时序/面积/状态报告
+*.area
+*.qor
+*.timing
+*.ts
+flow.status
+*.step.begin.f
+*.step.end.f
+*.step.error.f
+*.lock.f
+*.temp.f
+
+# ---------- 例外：里程碑 bit 必须手动归档到 releases/ ----------
+!releases/**
+
+# ---------- Windows / 编辑器 ----------
+Thumbs.db
+desktop.ini
+*.swp
+*~
+# 自动提取的中间产物（PDF 文本等，体积大且可重新生成）
+conversation_outputs/probes/_extract_*.txt
+conversation_outputs/probes/_extract_*.py

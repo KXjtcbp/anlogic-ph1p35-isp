@@ -1,0 +1,7 @@
+日期,版本/commit,工程,slice(%),lut6,reg,eram,dsp,pll,SetupWNS(ns),SetupTNS(ns),HoldWNS(ns),来源报告,备注
+2026-09-10,,lab1_MIPI_HDMI直通,12358,9865,13313,40,8,3,1.408,0,0.020,anlogic_example\lab_ex1...\Runs\phy_1\camera_to_dsi_display_phy.area + route.qor,"KX 本机编译（td_2026-09-10_10-24-25.log）；slice=12358/21216=58.25%；此批产物后被 09-20 那次覆盖"
+2026-09-10,,lab2_边缘检测,12926,,,,8,40,1.163,,,第5轮报告 §2.6,"slice=12926/21216=60.93%；Setup WNS=+1.163；td_2026-09-10_15-44-21.log；lut6/reg 待补"
+2026-09-10,,lab3_OSD,14852,12669,13380,40,9,3,0.103,0,0.020,anlogic_example\lab_ex3...\Runs\phy_1\camera_to_dsi_display_phy.area + route.qor,"slice=14852/21216=70.00%；lut6=12669/21216=59.71%；slice reg=13380/42432=31.53%；Setup WNS=+0.103（擦边，最紧路径在 HDMI_SERIAL_CLK 375MHz）；FMAX=715.82MHz"
+2026-09-20,,lab1_重跑,12358,9865,13313,40,8,3,1.408,0,0.020,anlogic_example\lab_ex1...\Runs\（00:00-00:02 那批）,"td_2026-09-19_23-54-16.log；bit 生成于 00:02:52"
+,,,,,,,,,,,,,"【以下为待填】每次自己编译后新增一行；只抄 phy_1\*_phy.area 与 route.qor 里【无星号】的数值；Setup WNS 一旦变负数立刻熔断降级"
+,,,,,,,,,,,,,"【lab3 可用余量】slice 6364 / lut6 8547 / reg 29052 / eram 68 / dsp 31 / pll 3 / mipi_rx 1 / ddr_byte 6"

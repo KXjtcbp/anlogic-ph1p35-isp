@@ -1,0 +1,600 @@
+
+<<<page 1>>>
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+TangDynasty® 工程仿真指南 
+ 
+ 
+上海安路信息科技股份有限公司 
+ 
+ 
+SWUG107（TD6.0 V1.0）2024.04  
+ 
+ 
+<<<page 2>>>
+ 
+TangDynasty® 工程仿真指南_TD6.0_V1.0  
+                                                  
+SWUG107                                www.anlogic.com                              I 
+2024.04 
+目  录 
+目  录 ................................ .....................  I 
+1 概述 ................................ .....................  1 
+2 仿真简介 ................................ ................. 1 
+2.1 工程仿真流程 .............................................................. 1 
+2.1.1 Behavioral Simulation ............................................... 2 
+2.1.2 Post RTL Simulation ................................................. 2 
+2.1.3 Post Gate Simulation ................................................ 2 
+2.1.4 Post Route Simulation ............................................... 2 
+2.2 支持的仿真工具 ............................................................ 2 
+3 TD 联合仿真工具 ................................ ........... 3 
+3.1 Simulation Libraries Compiler ............................................. 3 
+3.2 Project Simulation ........................................................ 3 
+4 仿真准备 ................................ ................. 5 
+4.1 仿真相关设置 .............................................................. 5 
+4.2 编译器件库 ................................................................ 6 
+4.2.1 TD GUI 方式编译仿真库 ................................................ 6 
+4.3 准备testbench 和仿真脚本 .................................................. 8 
+5 与第三方仿真工具的联合仿真 ..............................  15 
+5.1 功能仿真 ................................................................. 16 
+5.1.1 Behavioral Simulation .............................................. 16 
+5.1.2 Post RTL Simulation ................................................ 17 
+5.1.3 Post Gate Simulation ............................................... 17 
+<<<page 3>>>
+ 
+TangDynasty® 工程仿真指南_TD6.0_V1.0  
+                                                  
+SWUG107                                www.anlogic.com                              II 
+2024.04 
+5.1.4 Post Route Simulation .............................................. 18 
+5.2 时序仿真 ................................................................. 18 
+版本信息 ................................ .................. 20 
+免责声明 ................................ .................. 20 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+<<<page 4>>>
+  
+TangDynasty® 工程仿真指南_TD6.0_V1.0                                                                   
+SWUG107                            www.anlogic.com                                    1 
+2024.04 
+1 概述 
+本文档主要介绍了TangDynasty®（以下简称 TD ）中如何实现安路FPGA 应用下的工程仿真，TD 联
+合仿真工具支持TD 6.0 及其以上版本。通过此文档，可协助用户在工程设计流程的各个阶段实现快速
+仿真并验证设计功能和时序的正确性。 
+2 仿真简介 
+仿真是在软件环境中模拟真实设计行为的过程，仿真通过施加激励并观察设计输出来帮助验证工
+程设计的功能，本章节主要介绍了在TD 软件中的仿真流程以及各器件库支持的仿真工具。 
+2.1 工程仿真流程 
+在工程设计流程的各个阶段都可以进行仿真验证，在较大的工程中通常需要进行反复的仿真测试
+以保证功能和时序满足要求。 
+在TD 软件中设计各个阶段的仿真验证如下图2-1 所示： 
+Design Input
+Read Design
+Optimize RTL
+Optimize Gate
+Optimize 
+Placement
+Optimize Routing
+Generate 
+Bitstream
+Behavioral 
+Simulation
+Post RTL
+ Simulation
+Post Gate
+ Simulation
+Behavioral 
+Simulation
+Post Routing
+ Simulation
+仿真验证
+Timing
+ Simulation
+Back 
+annotation
+ 
+图 2-1 TD 工程仿真流程图 
+  
+<<<page 5>>>
+  
+TangDynasty® 工程仿真指南_TD6.0_V1.0                                                                   
+SWUG107                            www.anlogic.com                                    2 
+2024.04 
+2.1.1 Behavioral Simulation 
+FPGA Flow 运行完Read Design 这一步并执行open run 操作后，可执行Behavioral Simulation，
+即 RTL 行为级仿真。 该阶段仿真在综合前验证设计， 检查代码的语法错误以及代码行为的正确性， 是源
+码级的仿真，可初步修复设计的问题从而节约设计周期。 
+初始的设计为行为级的代码有以下优点： 
+（1）行为级代码更具备可读性； 
+（2）行为级代码具备复用性，可在其他工程设计中使用相同的RTL 代码； 
+（3）行为级代码具备可移植性，可移植到其他器件系列使用； 
+（4）行为级代码的仿真更便捷。 
+2.1.2 Post RTL Simulation 
+FPGA Flow 运行完Optimize RTL 这一步并执行open run 操作后，可执行Post RTL Simulation，
+即后RTL 级仿真。该阶段仿真是对优化后形成的门级电路网表的仿真，验证工程功能的正确性。 
+2.1.3 Post Gate Simulation 
+FPGA Flow 运行完Optimize Gate 这一步并执行open run 操作后， 可执行Post Gate Simulation，
+即后 Gate 级仿真。该阶段仿真是对门级电路转换成的安路器件库底层物理电路网表的仿真，可验证综
+合后设计工程功能的正确性。 
+2.1.4 Post Route Simulation 
+FPGA Flow 运行完Optimize Placement 以及Optimize Routing 这两步并执行open run 操作后，
+可执行Post Route Simulation，即后Route 级仿真。该阶段仿真是对物理单元布局布线优化后电路网
+表的仿真， 分为功能仿真和时序仿真， 其中时序仿真需要包含SDF 文件， 该文件可由TD 软件自动生成，
+时序仿真可以保证布局布线后的设计满足功能和时序的要求。 
+2.2 支持的仿真工具 
+TD 各器件库支持主流的第三方仿真工具，用户可自主选择第三方仿真工具联合仿真。
+<<<page 6>>>
+  
+TangDynasty® 工程仿真指南_TD6.0_V1.0                                                                   
+SWUG107                            www.anlogic.com                                    3 
+2024.04 
+3 TD 联合仿真工具 
+TD 软件集成Simulation Libraries Compiler 以及Project Simulation 两个联合仿真工具以协助
+用户实现设计流程中各个阶段的工程仿真，前者的功能是编译TD 器件库以支持第三方仿真工具调用，
+后者的功能是在TD 各个flow 阶段仿真时自动生成对应的仿真文件并实现一键自动仿真。 
+3.1 Simulation Libraries Compiler 
+Simulation Libraries Compiler 工具的主要功能是在TD 软件中实现对Anlogic 器件库/IP 仿真
+库的一键编译，第三方仿真工具可选择 Modelsim/Questasim，支持自定义编译库路径并生成相应的器
+件库目录。选择Tools → Simulation Libraries Compiler 使用该工具，如图3-1 所示。 
+ 
+图 3-1 Simulation Library Compiler 工具选项 
+3.2 Project Simulation 
+Project Simulation 工具的主要功能是在TD 软件的各个flow 阶段实现对工程的快速一键仿真，
+如图2.1 所示。Project Simulation 工具可自动化生成testbench 文件、仿真脚本以及网表文件，用
+户只需编写 testbench 的激励部分代码即可实现联合第三仿真工具 的自动化仿真，实现 Behavioral 
+Simulation、Post RTL Simulation、Post Gate Simulation以及Post Route Simulation。选择Tools 
+→ Project Simulation 使用该工具，如图3-2 所示。 
+注：使用TD 的Project Simulation 工具必须打开并编译工程。 
+
+<<<page 7>>>
+  
+TangDynasty® 工程仿真指南_TD6.0_V1.0                                                                   
+SWUG107                            www.anlogic.com                                    4 
+2024.04 
+  
+图 3-2 Project Simulation 工具选项 
+ 
+ 
+
+<<<page 8>>>
+  
+TangDynasty® 工程仿真指南_TD6.0_V1.0                                                                   
+SWUG107                            www.anlogic.com                                    5 
+2024.04 
+4 仿真准备 
+本章节描述了对安路器件上的工程进行仿真前所需的组件以及仿真相关设置。 
+在执行仿真之前需要完成以下准备事项： 
+（1）进行仿真相关的设置，选择第三方仿真工具及其可执行文件目录等等，VCS 仿真时必须勾选
+flow_sim_filelist 选项，不勾选此选项默认是Modelsim 的仿真设置； 
+（2）编译器件库； 
+（3）创建一个映射仿真行为的testbench 文件以及仿真脚本； 
+（4）生成网表（Post RTL Simulation、Post Gate Simulation 及Post Routing Simulation 需
+要网表文件） 。 
+4.1 仿真相关设置 
+选择Project→Project Setting打开Properties Setting窗口， 如图4-1 所示，点击Simulation
+进行仿真相关的设置，设置与当前创建的工程相关联。 
+ 
+图 4-1 Project Setting 窗口仿真设置 
+仿真设置的选项如下： 
+（1）simulator：选择仿真工具，目前支持Modelsim 以及Questasim； 
+（2）simulator_location：选择仿真工具的可执行文件路径； 
+
+<<<page 9>>>
+  
+TangDynasty® 工程仿真指南_TD6.0_V1.0                                                                   
+SWUG107                            www.anlogic.com                                    6 
+2024.04 
+（3）flow_sim_filelist： 选择是否在各仿真阶段生成仿真所需要的文件列表， 其中包括testbench
+文件、源文件、IP 的仿真文件以及其他源语文件。此选项打开后，用户使用Project Simulation 工具
+生成 testbench 和仿真脚本时还将在对应的仿真目录下生成.f 文件，如图 4-2 所示，该文件可直接用
+于 VCS 仿真。 
+ 
+图 4-2 Project Simulation 工具生成的 filelist 文件目录（Behavioral Simulation） 
+注：生成的.f 文件用于VCS 仿真时需要放在testbench 文件的同级目录。 
+4.2 编译器件库 
+TD 软件提供仿真模型作为库文件，在设计仿真之前用户需要应用第三方仿真工具编译这些文件。
+仿真库包括器件模型、IP 行为模型和时序模型，编译后的库可以直接应用在多个工程设计中。 
+注：用户如果使用的是同一版本的工具，只需要进行一次编译库的操作。但是，如果更改了TD 工
+具或者仿真工具版本就需要重新编译器件库。 
+有关第三方仿真工具编译库的详细信息，可以参照第三方仿真工具的文档。 
+4.2.1 TD GUI方式编译仿真库 
+TD 软件中集成有Simulation Libraries Compiler 工具，可实现对安路器件库/IP 仿真库的一键
+编译。选择Tools → Simulation Libraries Compiler 即可打开对话窗口如图4-3 所示。 
+ 
+图 4-3 Simulation Library Compiler 窗口显示 
+  
+
+<<<page 10>>>
+  
+TangDynasty® 工程仿真指南_TD6.0_V1.0                                                                   
+SWUG107                            www.anlogic.com                                    7 
+2024.04 
+注：启动TD 就可以使用该功能，无需打开工程。 
+编译器件库的选项设置如下： 
+（1）Simulator：选择仿真工具，目前支持Modelsim 以及Questasim； 
+（2）Executable Path ：选择仿真工具的可执行文件路径，Windows 系统的 TD 版本支持在默认状
+态下自动识别目标仿真工具的可执行路径，若目标仿真工具未添加到PATH 环境变量或者需要覆盖环境
+变量中的路径时需要设置； 
+（3）Device Family：选择编译的器件库，可选择common 库、EF2、EF3、EF4、EG、PH1、PH2、SF1
+以及all（器件库说明见表4-1），TD 支持的器件库以界面选项为准，默认状态下选择编译所有器件库； 
+（4）Compiled Library Location: 选择保存编译库结果的路径，TD 将在该路径下创建相应的文
+件夹保存对应器件库的编译结果； 
+（5）Recompile：选中该选项后会对已编译过的器件库进行重新编译，默认状态不会重编译。 
+表 4-1 器件库映射表 
+Library Name Device Name 
+common 器件公共库 
+EF2 SALELF® 2 系列 
+EF3 SALELF® 3 系列 
+EG SALEAGLE® 系列 
+PH1 SALPHOENIX®1A 系列 
+PH2 SALPHOENIX®2A 系列 
+SF1 SALSWIFT® 系列 
+点击 compile 后 TD 启动编译器件库，编译进程中的日志会显示在TD 软件的 console 窗口中，用
+户可以看到编译进度信息以及告警信息，如图4-4 所示，Log 文件自动保存在编译库目录下。 
+ 
+图 4-4 编译器件库的日志信息 
+
+<<<page 11>>>
+  
+TangDynasty® 工程仿真指南_TD6.0_V1.0                                                                   
+SWUG107                            www.anlogic.com                                    8 
+2024.04 
+4.3 准备 testbench 和仿真脚本 
+TD 软件中testbench 有两种生成方式， 支持用户自定义testbench 文件或通过Project Simulation
+工具自动生成testbench 文件。  
+testbench 是用来仿真的激励文件，可使用硬件描述语言verilog 或者system verilog 编写，其
+主要功能如下： 
+（1）例化并初始化设计； 
+（2）为工程设计产生激励； 
+（3）模拟设计输出的结果并验证设计功能的准确性。 
+testbench 可以简单地按顺序对特定的输入施加激励， 并可以包含子程序调用、 从外部文件读取的
+激励、条件激励或者其他更复杂的结构。 
+testbench 相对于交互式仿真有独特的优势， 一是支持在整个设计过程中的重复仿真， 二是可提供
+测试条件的文档。 
+在创建testbench 文件过程中需要注意以下几点： 
+（1）在testbench 文件中添加`timescale， 即时间单位以及仿真精度， 例如`timescale 1ns/1ps； 
+（2）在仿真开始时刻需要给设计的所有输入赋初始值以正确地开启仿真过程； 
+（3）在释放全局复位（GSR）之后启动时钟源； 
+（4）使用安路器件的相关源语时，testbench 需要调用全局复位文件，调用方式如图 4-5 所示，
+其中PH1_PHY_GSR 源语用于PH1 系列器件库，PH2_PHY_GSR 源语用于PH2 系列器件，glbl 源语用于EF2、
+EF3、EF4、EG、SF1 器件库。 
+ 
+图 4-5 全局复位模块例化 
+Project Simulation工具可实现在各flow 阶段后自动化生成testbench 以及仿真脚本文件。这里
+以 Post Route Simulation 为例，Flow 运行完Optimize Routing 阶段并执行open run 操作后，选择
+Tools → Project Simulation，点击Post Route Simulation 打开对话窗口如下图4-6 所示。 
+  
+
+<<<page 12>>>
+  
+TangDynasty® 工程仿真指南_TD6.0_V1.0                                                                   
+SWUG107                            www.anlogic.com                                    9 
+2024.04 
+ 
+图 4-6 Post Route Simulation 窗口显示 
+Post Route Simulation 窗口选项如下： 
+（1）Add an existing testbench：用户可添加一个已存在的testbench； 
+（2）Create a new testbench：用户可创建一个新的testbench，选中此选项并点击OK 后将在工
+程目录下自动创建testbench 文件并关联顶层模块； 
+（3）Function Simulation/Timing Simulation：在Post Route Simulation仿真阶段可选择功能
+仿真或者时序仿真，其他仿真阶段没有此选项；若选择 Timing Simulation，点击OK 后将在工程对应
+的仿真目录下生成SDF 延时文件，如图4-7 所示。SDF 文件为时序反标文件，用于后仿真时，适配网表
+文件中的cell 延迟信息。 
+ 
+图 4-7 SDF延时文件的生成选项 
+（4）Run：用户编写好testbench 文件后，选中Add an existing testbench添加testbench 文件
+并勾选Run，点击OK 即可启动第三方仿真工具执行仿真脚本并生成仿真波形； 
+
+<<<page 13>>>
+  
+TangDynasty® 工程仿真指南_TD6.0_V1.0                                                                   
+SWUG107                            www.anlogic.com                                    10 
+2024.04 
+选择Create a new testbench ，选中Timing Simulation，点击OK 后 TD 将在指定目录下自动生
+成 testbench 文件、仿真脚本文件、网表文件以及SDF 文件，如图4-8 所示。 
+ 
+图 4-8 Project Simulation 工具自动生成的文件目录（Post Route Simulation） 
+注：在 Post RTL Simulation、Post Gate Simulation 以及Post Route Simulation 仿真阶段，用
+户使用Project Simulation 工具可自动生成综合或者布局布线后的网表文件。 
+Project Simulation 工具可自动生成testbench，用户只需要编写激励部分代码即可。 
+ 
+注：用户需要根据目标工程设计修改自动生成的 testbench 中的时钟周期 PERIOD，默认时钟周期
+为 10ns。 
+在TD 工程设计中编写testbench 激励时， 可以遵循一些编写规范以确保测试的有效性和可维护性。
+`timescale 1ns/1ps 
+module top_tb(); 
+reg clk; 
+reg rst_n; 
+wire led; 
+//Clock process 
+parameter PERIOD = 10; 
+always #(PERIOD/2) clk = ~clk; 
+ 
+PH2_PHY_GSR PH2_PHY_GSR(); 
+//Unit Instantiate 
+top u_dut( 
+.clk(clk), 
+.rst_n(rst_n), 
+.led(led) 
+); 
+//Stimulus process 
+initial begin 
+//To be inserted 
+end 
+ 
+endmodule 
+<<<page 14>>>
+  
+TangDynasty® 工程仿真指南_TD6.0_V1.0                                                                   
+SWUG107                            www.anlogic.com                                    11 
+2024.04 
+以下是编写testbench 激励时一些建议的规范： 
+（1）使用initial 块或always 块：在testbench 中，通常使用initial 块或always 块来编写测
+试激励，initial 块适用于一次性的初始化和测试，而always 块适用于循环测试； 
+（2）添加时间延迟：在testbench 中，根据需要添加适当的时间延迟以确保测试激励的顺序和时
+序是正确的； 
+ 
+（3）使用任务（task）或函数（function） ：将测试激励的相关代码封装到任务或函数中，以提高
+可维护性和代码重用性； 
+ 
+（4）添加注释：在testbench 中添加详细的注释，解释测试激励的目的、顺序和预期结果； 
+（5）使用测试配置参数：在testbench 中使用参数来配置测试，以便在不同的测试场景中重复使
+用相同的testbench； 
+initial begin 
+//Stimulate input signals 
+input_signal = 1'b0; 
+#10; 
+input_signal = 1'b1; 
+#20; 
+input_signal = 1'b0; 
+ 
+//Additional testbench code 
+end 
+task apply_test_pattern; 
+//Your testbench code here 
+Endtask 
+ 
+//…… 
+ 
+initial begin 
+    apply_test_pattern; 
+end 
+<<<page 15>>>
+  
+TangDynasty® 工程仿真指南_TD6.0_V1.0                                                                   
+SWUG107                            www.anlogic.com                                    12 
+2024.04 
+ 
+（6）模拟结束：在testbench 的最后，添加结束仿真的语句，以确保仿真的正确结束。 
+ 
+注： testbench 的编写取决于具体的设计和仿真测试需求， 最重要的是确保testbench 能够准确、
+全面地验证设计的功能和时序。 
+仿真脚本用于配置仿真环境、 控制仿真任务、 查看仿真波形以及分析仿真结果。 通过使用仿真脚本，
+可以更轻松地自动化测试流程，提高仿真的效率和可重复性。 
+Modelsim 仿真脚本常用指令如表4-2 所示，详细指令信息可以参考Modelsim 仿真工具文档。 
+表 4-2 Modelsim 仿真脚本常用命令 
+命令 参数 释义 
+vlib  创建一个新的库或者设置当前工作库 
+vlog  编译 Verilog 源代码文件 
+ 
+-incr 启用增量编译 
+-vopt 启用编译优化 
+-sv 指示编译System Verilog 源文件 
+vcom  编译 VHDL 源代码文件 
+vmap  设置库映射，将库名映射到具体的目录路径 
+vsim  启动 Modelsim 仿真的指令 
+ 
+-t 指定仿真的时间精度 
+-vopt 启用编译优化 
+-L 指定库的搜索路径 
+-sdftyp 指定特定实例的sdf 仿真文件 
+根据是否编译器件库，Project Simulation 工具生成的仿真脚本有所区别。选择第三方仿真工具
+parameter TEST_DELAY = 10; 
+initial begin 
+//Stimulate input signals 
+input_signal = 1'b0; 
+#TEST_DELAY; 
+input_signal = 1'b1; 
+#TEST_DELAY; 
+Input_signal = 1'b0; 
+end 
+initial begin 
+//Your testbench code here 
+#100;    //Run Simulation for 100 time units 
+$finish; //Finish simulation 
+end 
+<<<page 16>>>
+  
+TangDynasty® 工程仿真指南_TD6.0_V1.0                                                                   
+SWUG107                            www.anlogic.com                                    13 
+2024.04 
+为 Modelsim， 若用户已经编译器件库， 则仿真脚本将以映射库的形式加载器件库文件， 如图4-9 所示。 
+ 
+ 
+图 4-9 编译器件库后生成的仿真脚本 do 文件 
+注：如果用户使用了多个TD 版本编译了同一器件库，仿真脚本中将映射最新工具版本的器件库。 
+若用户未编译器件库，则Project Simulation 工具会将器件源语所在路径添加至仿真脚本中，用
+户启动仿真工具执行脚本再进行源语的编译，如图4-10 所示。 
+
+<<<page 17>>>
+  
+TangDynasty® 工程仿真指南_TD6.0_V1.0                                                                   
+SWUG107                            www.anlogic.com                                    14 
+2024.04 
+ 
+图 4-10 编译器件库前生成的仿真脚本 do 文件 
+注：若未提前编译器件库，仿真编译的时间可能稍长。 
+  
+
+<<<page 18>>>
+  
+TangDynasty® 工程仿真指南_TD6.0_V1.0                                                                   
+SWUG107                            www.anlogic.com                                    15 
+2024.04 
+5 与第三方仿真工具的联合仿真 
+本章节介绍了在完成仿真准备工作后如何实现与第三方仿真工具的联合仿真，并描述了 VCS 仿真
+流程以协助用户在Linux 系统中使用VCS 仿真工具进行工程仿真。 
+TD 工程支持使用第三方仿真工具进行仿真， 可以直接由TD 集成设计环境执行联合仿真或使用用户
+自定义的外部仿真环境。 
+VCS 仿真工具暂未关联到 TD 软件环境中，如果用户需要使用 VCS 仿真目标工程，可自定义外部仿
+真环境。 
+VCS 仿真流程如下： 
+（1）设置环境变量：在使用VCS 之前，需要设置VCS 工具的环境变量，以便系统能够找到VCS 的
+执行文件； 
+（2）生成 filelist 文件：文件列表包括 testbench 文件、源文件、IP 的仿真文件以及其他源语
+文件，VCS 仿真时仿真设置必须勾选 flow_sim_filelist，在目标工程的对应 flow 阶段使用 Project 
+Simulation 工具即可在仿真目录下自动生成testbench 文件和filelist 文件，详见第4 章； 
+（3）编写Makefile 脚本文件：在目标工程的对应仿真目录下创建一个新的Makefile 文件，添加
+仿真时需要的编译命令和选项，如图5-1 所示，VCS 编译命令和选项设置可参照VCS 工具文档； 
+ 
+图 5-1 Makefile 脚本的 VCS编译命令和选项 
+（4）运行VCS 编译：执行Makefile 脚本，使用make 命令即可启动VCS 仿真编译； 
+（5）查看仿真波形：VCS 编译完成后，可通过 DVE 工具或者 verdi 工具查看仿真波形，若用户添
+加了 verdi 的环境变量并在 Makefile 脚本中添加了 verdi 命令和选项，如图 5-2 所示，可使用 make 
+verdi 命令直接启动verdi 查看波形。 
+ 
+图 5-2 Makefile 脚本的 verdi 命令和选项 
+
+<<<page 19>>>
+  
+TangDynasty® 工程仿真指南_TD6.0_V1.0                                                                   
+SWUG107                            www.anlogic.com                                    16 
+2024.04 
+5.1 功能仿真 
+安路FPGA 工程仿真包括Behavioral Simulation、Post RTL Simulation、Post Gate Simulation
+以及Post Route Simulation，这四个阶段都可以进行功能仿真以验证设计功能的正确性。 
+5.1.1 Behavioral Simulation 
+Flow 运行完Read Design 阶段并执行open run 操作后，选择Tools → Project Simulation → 
+Behavioral Simulation 打开对话窗口，添加已准备好的testbench 文件，勾选Run，如图5-3 所示，
+点击OK 即调用第三方仿真工具自动执行行为级功能仿真。 
+ 
+图 5-3 Behavioral Simulation 窗口显示 
+如果用户使用VCS 仿真工具，需要在目标工程对应的behav_sim 目录下创建并编写Makefile 脚本
+文件，执行Makefile 脚本即可启动行为级功能仿真。 
+  
+
+<<<page 20>>>
+  
+TangDynasty® 工程仿真指南_TD6.0_V1.0                                                                   
+SWUG107                            www.anlogic.com                                    17 
+2024.04 
+5.1.2 Post RTL Simulation 
+Flow 运行完Optimize RTL 阶段并执行open run 操作后， 可执行Post RTL Simulation。 选择Tools 
+→ Project Simulation → Post RTL Simulation 打开对话窗口，添加准备好的testbench 文件，勾
+选 Run，如图5-4 所示，点击OK 即调用第三方仿真工具自动执行后RTL 级功能仿真。 
+ 
+图 5-4 Post RTL Simulation 窗口显示 
+如果用户使用VCS 仿真工具， 需要在目标工程对应的post_rtl_sim 目录下创建并编写Makefile 脚
+本文件，执行Makefile 脚本即可启动后RTL 级功能仿真。 
+5.1.3 Post Gate Simulation 
+Flow 运行完Optimize Gate 阶段并执行open run 操作后，可执行Post Gate Simulation 。选择
+Tools → Project Simulation → Post Gate Simulation 打开对话窗口，添加准备好的testbench 文
+件，勾选Run，如图5-5 所示，点击OK 即调用第三方仿真工具自动执行后Gate 级功能仿真。 
+ 
+图 5-5 Post Gate Simulation 窗口显示 
+如果用户使用 VCS 仿真工具，需要在目标工程对应的post_gate_sim 目录下创建并编写 Makefile
+脚本文件，执行Makefile 脚本即可启动后Gate 级功能仿真。 
+
+<<<page 21>>>
+  
+TangDynasty® 工程仿真指南_TD6.0_V1.0                                                                   
+SWUG107                            www.anlogic.com                                    18 
+2024.04 
+5.1.4 Post Route Simulation 
+Flow 运行完Optimize Routing 阶段并执行open run 操作后，可执行Post Route Simulation 。
+选择Tools → Project Simulation → Post Route Simulation 打开对话窗口， 添加准备好的testbench
+文件，选择Function Simulation，勾选Run，如图5-6 所示，点击OK 即调用第三方仿真工具自动执行
+后 Route 级功能仿真。 
+ 
+图 5-6 Post Route Simulation 窗口显示（功能仿真） 
+如果用户使用VCS 仿真工具， 需要在目标工程对应的post_route_sim 目录下创建并编写Makefile
+脚本文件，执行Makefile 脚本即可启动后Route 级功能仿真。 
+5.2 时序仿真 
+在 TD 软件计算出最差情况下布局布线后的延时信息后，用户可以通过SDF 反标执行 Verilog 时序
+仿真来验证电路的工作是否正常。在 Post Route Simulation 阶段可以执行时序仿真，Flow 运行完
+Optimize Routing 阶段并执行open run 操作后，选择Tools → Project Simulation → Post Route 
+Simulation 打开对话窗口，添加准备好的testbench 文件，选择Timing Simulation，勾选Run，如图
+5-7 所示，点击OK 即调用第三方仿真工具自动执行后Route 级时序仿真。 
+ 
+图 5-7 Post Route Simulation 窗口显示（时序仿真） 
+
+<<<page 22>>>
+  
+TangDynasty® 工程仿真指南_TD6.0_V1.0                                                                   
+SWUG107                            www.anlogic.com                                    19 
+2024.04 
+如果用户使用VCS 仿真工具，需要在目标工程对应的post_route_sim 目录下创建并编写Makefile
+脚本文件并进行SDF 反标，执行Makefile 脚本即可启动后Route 级时序仿真。 
+VCS 时序仿真中的SDF 反标有两种方式，如下： 
+（1）在 Makefile 中调用，使用命令 vcs–sdf min|typ|max:instance_name:file.sdf ，其中
+min|typ|max 表示选择最小、典型或最大时序信息，instance_name 是指定时序信息应用的实例名称，
+file.sdf 是包含了SDF 信息的文件; 
+（2）使用$sdf_annotate 函数将SDF 文件反标到网表中,函数声明为$sdf_annotate ("sdf_file" 
+[,module_instance][,"sdf_configfile"][,"sdf_logfile"][,"mtm_spec"][,"scale_factors"] 
+[,"scale_type"])，参数说明可查阅VCS 仿真工具文档。 
+注： （1）用户使用VCS 工具执行sdf 后仿真时，需要将+notimingcheck/+nospecify 等屏蔽时序检
+查的参数去掉； （2）PH2 仿真模型没有SDF 相关的sepcify 描述，暂不支持时序仿真。 
+ 
+ 
+ 
+ 
+<<<page 23>>>
+  
+TangDynasty® 工程仿真指南_TD6.0_V1.0                                                                   
+SWUG107                            www.anlogic.com                                    20 
+2024.04 
+版本信息 
+日期 修订记录 
+2024/04 首次根据版本软件发布手册 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+版权所有©2024 上海安路信息科技股份有限公司  
+未经本公司书面许可， 任何单位和个人都不得擅自摘抄、 复制、 翻译本文档内容的部分或全部， 并不得
+以任何形式传播。  
+免责声明  
+本文档并未授予任何知识产权的许可， 并未以明示或暗示， 或以禁止发言或其他方式授予任何知识产权
+许可；本文档仅为向用户提供使用器件的参考， 协助用户正确地使用安路科技产品之用， 其著作权归安
+路科技所有；本文档所展示的任何产品信息均不构成安路科技对所涉产品或服务作出任何明示或默示
+的声明或保证。  
+安路科技将不定期地对本文档进行更新、 修订。 用户如需获取最新版本的文档， 可通过安路科技的官方
+网站（网址为：https://www.anlogic.com）自行查询下载，也可联系安路科技的销售人员咨询获取。 

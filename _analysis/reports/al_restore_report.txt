@@ -1,0 +1,23 @@
+修复前: 23247 B, 54 个 File 条目
+修复后: 23569 B, 55 个 File 条目
+
+hdmi_phy_wrapper.v 在表里: True
+lane_lvds_10_1.v 的 attrs: {'UsedInSyn': 'true', 'UsedInP&R': 'true', 'BelongTo': 'design_1', 'CompileOrder': '44'}
+AutoExcluded=true 的条目数: 0
+
+CompileOrder 序列（41~55）:
+   41  ../user_source/hdl_source/hdmi_tx.v
+   42  ../user_source/hdl_source/hdmi_1_4b_transmitter_core_wrapper.enc.v
+   43  ../user_source/hdl_source/hdmi_phy_wrapper.v
+   44  ../user_source/hdl_source/lane_lvds_10_1.v
+   45  ../user_source/hdl_source/vtc/uivtc.v
+   46  ../user_source/hdl_source/hdmi_mixer.v
+   47  ../user_source/hdl_source/I2S_receiver.v
+   48  ../user_source/hdl_source/audio_arc_calculate.v
+   49  ../user_source/hdl_source/key_remove_shakes.v
+   50  ../user_source/hdl_source/anlogic_logo_rom.v
+   51  ../user_source/hdl_source/osd_char_lib.v
+   52  ../user_source/hdl_source/my_algo/my_algo.v
+   53  ../user_source/hdl_source/my_algo/key_mode_ctrl.v
+
+备份: E:\FPGA\_backup\20261009_al修复\camera_to_dsi_display.al.broken_20261009_1725

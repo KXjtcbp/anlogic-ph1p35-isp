@@ -1,0 +1,5348 @@
+
+<<<page 1>>>
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+TangDynasty® 综合与 FPGA 应用编码指南 
+ 
+ 
+上海安路信息科技股份有限公司 
+ 
+SWUG106（TD6.0 V1.0）2024.04  
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+<<<page 2>>>
+ 
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+                                                  
+SWUG106                                www.anlogic.com                              I 
+2024.04 
+目  录 
+1 概述 ................................ ................. 1 
+2 HDL 编码支持 ................................ ......... 1 
+2.1 Verilog 编码支持 .................................................................. 1 
+2.1.1 功能支持 ............................................................ 1 
+2.1.2 结构支持 ............................................................ 1 
+2.1.3 系统任务和功能支持 .................................................. 3 
+2.1.4 关键字支持 .......................................................... 3 
+2.1.5 行为级支持 .......................................................... 4 
+2.1.6 描述语句支持 ........................................................ 6 
+2.1.7 函数 ............................................................... 11 
+2.1.8 任务 ............................................................... 12 
+3 TD 综合编译选项 ................................ .......14 
+3.1 综合选项操作 ..................................................................... 14 
+3.2 读入文件选项（Read Design） ...................................................... 14 
+3.3 RTL级优化选项（Optimize RTL） .................................................... 16 
+3.4 门级优化选项（Optimize Gate） .................................................... 17 
+4 TD 综合指令 ................................ ..........20 
+4.1 通用语法说明 ..................................................................... 20 
+4.1.1 Verilog 与 System Verilog 语法规则 ................................... 20 
+4.1.2 VHDL 语法规则 ....................................................... 22 
+4.2 TD支持的attribute说明 ........................................................... 23 
+4.2.1 translate_off/translate_on ......................................... 23 
+4.2.2 full_case .......................................................... 24 
+<<<page 3>>>
+ 
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+                                                  
+SWUG106                                www.anlogic.com                              II 
+2024.04 
+4.2.3 parallel_case ...................................................... 24 
+4.2.4 keep ............................................................... 25 
+4.2.5 keep_hierarchy ..................................................... 27 
+4.2.6 ram_style .......................................................... 29 
+4.2.7 rom_style .......................................................... 31 
+4.2.8 max_fanout ......................................................... 33 
+4.2.9 shifter_style ...................................................... 35 
+4.2.10 dsp_style ......................................................... 37 
+4.2.11 fsm_encoding ...................................................... 39 
+4.2.12 allow_backward_retiming ........................................... 40 
+4.2.13 allow_forward_retiming ............................................ 41 
+4.2.14 preserve .......................................................... 44 
+4.2.15 use_ripple ........................................................ 46 
+4.2.16 clock_buffer ...................................................... 48 
+4.2.17 resource_sharing .................................................. 50 
+4.2.18 force_ram ......................................................... 51 
+4.2.19 no_ram ............................................................ 52 
+4.2.20 bound ............................................................. 54 
+5 HDL 编码技巧 ................................ .........55 
+5.1 表达式与操作符 ................................................................... 55 
+5.1.1 合并、重复 ......................................................... 55 
+5.1.2 移位 ............................................................... 55 
+5.1.3 非、与、或、异或、同或 ............................................. 55 
+5.1.4 条件选择 ........................................................... 56 
+5.1.5 加、减 ............................................................. 56 
+5.1.6 比较 ............................................................... 57 
+<<<page 4>>>
+ 
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+                                                  
+SWUG106                                www.anlogic.com                              III 
+2024.04 
+5.1.7 取址 ............................................................... 57 
+5.1.8 乘 ................................................................. 58 
+5.1.9 除、模、乘方 ....................................................... 58 
+5.1.10 操作符优先级 ...................................................... 58 
+5.2 组合逻辑 ......................................................................... 59 
+5.2.1 连续赋值 ........................................................... 59 
+5.2.2 过程赋值 ........................................................... 59 
+5.2.3 避免时序逻辑 ....................................................... 60 
+5.2.4 避免组合逻辑环 ..................................................... 61 
+5.2.5 避免不稳定组合逻辑环 ............................................... 63 
+5.3 时序逻辑 ......................................................................... 63 
+5.3.1 DFF ................................................................ 63 
+5.3.2 Latch .............................................................. 65 
+5.3.3 DFF 初值设定 ........................................................ 65 
+5.3.4 异步 set/reset ..................................................... 66 
+5.4 模块调用 ......................................................................... 69 
+5.4.1 HDL 门级原语调用 .................................................... 69 
+5.4.2 TD 原语调用 ......................................................... 69 
+5.5 Shift register ................................................................... 79 
+5.5.1 Static ............................................................. 79 
+5.5.2 Dynamic ............................................................ 80 
+5.6 Memory ........................................................................... 81 
+5.6.1 DRAM ............................................................... 81 
+5.6.2 ERAM ............................................................... 82 
+5.6.3 URAM ............................................................... 83 
+5.6.4 ROM ................................................................ 83 
+<<<page 5>>>
+ 
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+                                                  
+SWUG106                                www.anlogic.com                              IV 
+2024.04 
+5.6.5 RAM 端口类型 ........................................................ 84 
+5.6.6 RAM 初始值 .......................................................... 85 
+5.6.7 RAM 同步读与异步读 .................................................. 85 
+5.6.8 RAM Out-reg ........................................................ 86 
+5.6.9 RAM 读写顺序 ........................................................ 86 
+5.6.10 RAM 使能 ........................................................... 87 
+5.6.11 RAM 复位 ........................................................... 88 
+5.6.12 RAM BYTE .......................................................... 89 
+5.6.13 RAM 选型 ........................................................... 89 
+5.7 算术乘（加） ..................................................................... 91 
+5.7.1 特殊器件注意事项 ................................................... 91 
+5.7.2 乘法器 ............................................................. 91 
+5.7.3 乘 ................................................................. 91 
+5.7.4 乘加 ............................................................... 91 
+5.7.5 加乘 ............................................................... 91 
+5.7.6 加乘加 ............................................................. 92 
+5.7.7 DSP 内部寄存器 ...................................................... 92 
+5.7.8 DSP 内部寄存器类型 .................................................. 94 
+5.8 算术加减比较 ..................................................................... 95 
+5.8.1 特殊器件注意事项 ................................................... 95 
+5.8.2 加法器 ............................................................. 95 
+5.8.3 比较器 ............................................................. 95 
+5.9 计数器 ........................................................................... 95 
+5.10 读写寄存器 ...................................................................... 96 
+5.11 FSM 有限状态机 .................................................................. 98 
+5.11.1 米利（Mealy）状态机 ............................................... 98 
+<<<page 6>>>
+ 
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+                                                  
+SWUG106                                www.anlogic.com                              V 
+2024.04 
+5.11.2 摩尔（Moore）状态机 ............................................... 98 
+5.11.3 有限状态机推荐代码风格 ............................................ 98 
+5.11.4 按编码方式分类 ................................................... 105 
+5.12 计算最大值 ..................................................................... 109 
+5.13 异步信号同步化 ................................................................. 111 
+5.14 管脚三态总线 ................................................................... 116 
+5.15 内部三态总线 ................................................................... 117 
+6 应用优化指南 ................................ ........118 
+6.1 面积优化 ........................................................................ 118 
+6.1.1 信号优化 .......................................................... 118 
+6.1.2 跨模块优化 ........................................................ 119 
+6.1.3 Memory 大小优化 .................................................... 120 
+6.1.4 模块出口寄存器打拍 ................................................ 120 
+6.1.5 复用复位信号 ...................................................... 121 
+6.1.6 用同步复位信号 .................................................... 122 
+6.1.7 近似数值计算 ...................................................... 125 
+6.1.8 常数乘法优化 ...................................................... 126 
+6.1.9 硬核使用 .......................................................... 126 
+6.1.10 资源共享优化 ..................................................... 126 
+6.2 时序优化 ........................................................................ 127 
+6.2.1 根据频率评估级数 .................................................. 127 
+6.2.2 Pipeline .......................................................... 128 
+6.2.3 约束Multi-cycle ................................................... 130 
+6.2.4 反沿借半拍 ........................................................ 131 
+6.2.5 Retiming .......................................................... 131 
+6.2.6 算术逻辑操作链式与树状 ............................................ 132 
+<<<page 7>>>
+ 
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+                                                  
+SWUG106                                www.anlogic.com                              VI 
+2024.04 
+6.2.7 算术逻辑等价变换 .................................................. 133 
+6.2.8 If 长链优化转树状 case ............................................. 135 
+6.2.9 If 长链换顺序 ...................................................... 136 
+6.2.10 大MUX 语句优化 ................................................... 137 
+6.2.11 FSM 优化 .......................................................... 139 
+6.3 功耗优化 ........................................................................ 140 
+6.3.1 Clock gating ...................................................... 140 
+6.3.2 数据路径Gating .................................................... 140 
+6.3.3 避免不稳定的组合逻辑环 ............................................ 142 
+版本信息 ................................ ..............143 
+免责声明 ................................ ..............143 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+<<<page 8>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   1 
+2024.04 
+1 概述 
+本文档主要介绍了 TangDynasty®（以下简称 TD 软件）软件中综合技术和硬件描述语言 （HDL）的
+设计编码规范，包括可综合的HDL 代码、TD 支持的Synthesis Directive 、TD 综合编译选项、典型应
+用示例、面积优化、 时序优化、 功耗优化方法。通过此文档， 可帮助用户在设计过程中规避不必要的综
+合问题，并充分利用TD 软件的体系结构功能。 
+2 HDL 编码支持 
+本章主要介绍 了 TD 软件中 对 HDL 设计编码的支持 程度 ，帮助 用户了解 Verilog、VHDL、
+SystemVerilog 相关语法知识。 
+2.1 Verilog 编码支持 
+2.1.1 功能支持 
+Verilog 可用于更高抽象层次下描述行为级或结构级的电路设计，采用Verilog 进行电路描述时，
+需要知晓并理解该硬件描述语言支持的相关语法与功能。TD 所支持的 Verilog 语法、功能包括如下方
+面：  
+1. 部分变量选择 
+Verilog-2001 允许用户使用变量从矢量中选择一组数据。变量选择不是由两个显式值限定的，而
+是由其范围的起点和向量的宽度定义的。表2-1 列出了变量部分选择支持符号。 
+表 2-1 变量部分选择支持符号列表 
+符号 含义 
++ 从起始点增加变量的部分选择范围 
+- 从起始点减少变量的部分选择范围 
+变量部分选择编码示例如下： 
+ 
+2.1.2 结构支持 
+下表列出了Verilog 结构在TD 软件中的支持状态。 
+  
+reg  [3:0] data; 
+reg  [3:0] select; 
+wire [7:0] byte = data[select +: 8]; 
+<<<page 9>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   2 
+2024.04 
+表 2-2 结构支持列表 
+Verilog 编码结构 
+常数 支持状态 
+整数 支持 
+字符串 支持 
+实数 不支持 
+数据类型 支持状态 
+tri0 不支持 
+tri1 不支持 
+trireg 不支持 
+wand 不支持 
+wor 不支持 
+实数和实时寄存器(real、realtime) 不支持 
+程序分配类型 支持状态 
+assign 支持 
+for 语句 支持，但是边界必须是静态的 
+deassign 不支持 
+force 不支持 
+release 不支持 
+forever 语句 不支持 
+repeat 语句 不支持 
+delay(#) 不支持 
+event(@) 不支持 
+wait 不支持 
+parallel 语句块 不支持 
+disable 不支持 
+设计层级结构 支持状态 
+模块定义(module) 支持 
+宏模块定义(macromodule) 支持 
+层次结构名称 支持 
+defparam 支持 
+实例数组 支持 
+配置 支持 
+编译器指令 支持状态 
+`define 支持 
+`ifdef `else `endif 支持 
+`include 支持 
+`timescale 不支持 
+<<<page 10>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   3 
+2024.04 
+2.1.3 系统任务和功能支持 
+TD 综合支持的系统任务和功能如下表所示。 
+表 2-3 任务和功能支持列表 
+系统任务和功能 支持状态 内容介绍 
+$sin 支持 常数实参 
+$cos 支持 常数实参 
+$tan 支持 常数实参 
+$pow 支持 常数实参 
+$readmemb 支持 初始化内存，二进制表示 
+$readmemh 支持 初始化内存，十六进制表示 
+$signed 支持 有符号数据强制转换 
+$unsigned 支持 无符号数据强制转换 
+$fatal 支持 打印致命报告 
+$warning 支持 打印警告报告 
+$error 支持 打印错误报告 
+$info 支持 打印信息报告 
+$display 不支持  
+$fclose 不支持  
+$fgets 不支持  
+$write 不支持  
+$size 不支持  
+注意：$readmemb 和$readmemh 支持 txt、json、csv、xml、html、hex 多种文档格式，创建工程
+时，该文档必须放置在.v 源文件目录或.al 根目录下。 
+2.1.4 关键字支持  
+TD 所支持的Verilog 关键字如下表所示。 
+表 2-4 关键字支持列表 
+always begin case cmos defparam 
+design config casex buf and 
+disable deassign casez bufif0 assign 
+edge default cell bufif1 automatic 
+else end endcase endconfig endfunction 
+endgenerate endmodule endprimitive endspecify endtable 
+forever Force for use endtask 
+<<<page 11>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   4 
+2024.04 
+fork function generate genvar highz0 
+highz1 If ifnone initial inout 
+localparam integer join large input 
+library medium module nand negedge 
+nmos nor not notif0 notif1 
+output parameter pmos posedge primitive 
+pull0 pull1 rcmos real realtime 
+reg release repeat rnmos rpmos 
+rtran rtranif0 rtranif1 scalared signed 
+small specify specparam strong0 strong1 
+supply0 supply1 table task time 
+tran tranif0 tranif1 tri tri0 
+tri1 triand trior trireg vectored 
+wait wand weak0 weak1 while 
+wire wor xnor xor include 
+or timescale showcancelled incdir instance 
+liblist macromodule pullup pulldown pulsestyle_ondetect 
+pulsestyle_onevent     
+2.1.5 行为级支持  
+TD 支持的基本值如下所示： 
+表 2-5 基本值支持列表 
+0 逻辑0/假状态 
+1 逻辑1/真状态 
+x 不支持：不确定态，在casex 分支条件中作用同符号“?” 
+z 仅在管脚支持，高阻态，在casex 分支条件中作用同符号“?” 
+在Verilog HDL 中，根据赋值的方式不同，可将数据类型主要分为三大类：网络（net）型、变量
+（registers）型和常数（constants）型。TD 支持的数据类型如下表所示： 
+表 2-6 数据类型支持列表 
+网络 wire  
+常数 localparam parameter 
+寄存器 integer reg 
+TD 数据类型编码示例如下： 
+<<<page 12>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   5 
+2024.04 
+ 
+Verilog HDL 语言的运算符范围很广，TD 支持的运算符如下表所示： 
+表 2-7 运算符支持列表 
+算术 逻辑 关系 条件 
++ & < ? 
+- && >  
+* | ==  
+** || <=  
+/ ^ >=  
+% ~ !=  
+ ~^   
+ ^~   
+ <<   
+ >>   
+ <<<   
+ >>>   
+表达式 （Expression） 是一种连接操作数 （operand） 和运算符 （operator） 的结构， 如果“函数”
+的结果是常数，则称作常数表达式（constant expression）。TD 支持的表示式如下所示： 
+表 2-8 表达式支持列表 
+表达式 符号 支持状态 
+连接 {} 支持 
+复制 {{}} 支持 
+除法 / 支持 
+取余 % 支持 
+加法 + 支持 
+减法 - 支持 
+乘法 * 支持 
+幂 ** 支持 
+关系 >,<,>=,<= 支持 
+wire   net1;              // single bit net 
+reg   r1;              // single bit register 
+integer  r2;                    // single int bit register 
+reg [15:0]  bus1;              // 15 bit register 
+reg [7:0]  mem[0:127];            // 8x128 Memory register 
+parameter  state1 = 3'b001;    // 3 bit constant 
+parameter  component = "TMS380C16";  // string 
+<<<page 13>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   6 
+2024.04 
+表达式 符号 支持状态 
+逻辑否 ！ 支持 
+逻辑与 && 支持 
+逻辑或 || 支持 
+逻辑等式 == 支持 
+逻辑不等式 ！= 支持 
+按位取反 ~ 支持 
+按位与 & 支持 
+按位或 | 支持 
+按位异或 ^ 支持 
+按位同或 ~^,^~ 支持 
+左移 << 支持 
+右移 >> 支持 
+有符号左移 <<< 支持 
+有符号右移 >>> 支持 
+条件 ?: 支持 
+2.1.6 描述语句支持 
+2.1.6.1 if条件分支 
+在always 块中，如果出现if（else if）（else）条件分支，会综合出（多个）2 选 1 多路选择器
+逻辑。如果有很多else if，则会出现多层2 选1 多路选择器链（树） 。 
+ 
+另一种写法是逆序全 if，利用多重过程赋值时，只有最后赋值语句生效的特性，从而得到等价的
+逻辑。 
+wire [3:0] cond; 
+wire [4:0] din; 
+reg dout; 
+always @(*) 
+if (cond[0]) 
+  dout <= din[0]; 
+ else if (cond[1]) 
+  dout <= din[1]; 
+ else if (cond[2]) 
+  dout <= din[2]; 
+ else if (cond[3]) 
+  dout <= din[3]; 
+ else 
+  dout <= din[4]; 
+<<<page 14>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   7 
+2024.04 
+ 
+2.1.6.2 case条件分支 
+case 语句： 
+case 语句通常执行变量、常数与表达式间的比较，并选择几个并行分支中的一个。选择条件通常
+为按照分支顺序依次判断其真假，并执行第一个判断为 true 的分支。如果没有一个分支匹配，则执行
+默认分支。对于某组信号的不同值作为分支条件可以用case 语句描述。 
+ 
+casex/casez 语句： 
+casex/casez 语句对于case 语句存在分支操作相同， 条件相仿的共同点，区别为：casez 将分支选
+项中任意位的所有 z 值视为不关心；casex 将分支选项中任意位的所有x、z 和？值视为不关心。使用
+casez 或casex 可以简化代码，增加可读性。 
+wire [3:0] cond; 
+wire [4:0] din; 
+reg dout; 
+always @(*) 
+ dout <= din[4]; 
+ if (cond[3]) 
+  dout <= din[3];  
+if (cond[2]) 
+  dout <= din[2]; 
+if (cond[1]) 
+  dout <= din[1]; 
+if (cond[0]) 
+  dout <= din[0];   
+wire [2:0] sel; 
+wire [4:0] din; 
+reg dout; 
+always @(*) 
+ case (sel) 
+  3'b000: dout <= din[0]; 
+  3'b001: dout <= din[1]; 
+  3'b010: dout <= din[2]; 
+  3'b011: dout <= din[3]; 
+  default: dout <= din[4]; 
+ endcase 
+<<<page 15>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   8 
+2024.04 
+ 
+匹配变量： 
+case 语句的匹配项表达式也可以是变量，优先级由上到下。比如下面的case (1)代码块逻辑等同
+于 if、else if、else。 
+ 
+2.1.6.3 if、case嵌套 
+if 和 case 语句可以嵌套使用。 
+wire [2:0] sel; 
+wire [4:0] din; 
+reg dout; 
+always @(*) 
+ casez (sel) 
+  3'b000: dout <= din[0]; 
+  3'b001: dout <= din[1]; 
+  3'b010: dout <= din[2]; 
+  3'b011: dout <= din[3]; 
+  3'b1??: dout <= din[4]; 
+ endcase 
+wire [3:0] cond; 
+wire [4:0] din; 
+reg dout; 
+always @(*) 
+ case (1) 
+cond[0]: dout <= din[0]; 
+cond[1]: dout <= din[1]; 
+cond[2]: dout <= din[2]; 
+cond[3]: dout <= din[3]; 
+default: dout <= din[4]; 
+ endcase 
+<<<page 16>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   9 
+2024.04 
+ 
+2.1.6.4 for循环 
+TD 编码支持for 循环语句，在组合逻辑/时序逻辑中，进行相似操作、重复操作或扩展slice 结构
+时，可以采用for 语句进行描述，采用for 循环语句时，可搭配以下操作符：< ，<= ，> ，>=，从而
+简化整体代码，增加可读性，简化维护难度。 
+ 
+wire reverse; 
+wire [1:0] sel; 
+wire [3:0] din; 
+reg dout; 
+always @(*) 
+    if (reverse) 
+        case (sel) 
+            2'b00: dout <= din[3]; 
+            2'b01: dout <= din[2]; 
+            2'b10: dout <= din[1]; 
+            2'b11: dout <= din[0]; 
+        endcase 
+    else 
+        case (sel) 
+            2'b00: dout <= din[0]; 
+            2'b01: dout <= din[1]; 
+            2'b10: dout <= din[2]; 
+            2'b11: dout <= din[3]; 
+        endcase 
+reg [7:0] bytes[NUM_BYTES-1:0]; 
+reg [7:0] sum; 
+integer i; 
+always @(*) begin 
+    sum = 0; 
+ for (i=0; i<NUM_BYTES; i=i+1) 
+  sum = sum + bytes[i]; 
+end 
+<<<page 17>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   10 
+2024.04 
+ 
+2.1.6.5 while循环 
+对重复模块进行描述时，也可以采用while 循环来执行重复过程。while 的判断方式为：当表达式
+判断为 false 时，不执行当前语句，直到表达式判断为true 时，才执行当前语句。while 的判断语句
+禁止无限制循环，循环次数要保证有具体数值。 
+ 
+reg [7:0] bytes[NUM_BYTES-1:0]; 
+reg [7:0] sum; 
+integer i; 
+always @(posedge clk) begin 
+    sum = 0; 
+ for (i=0; i<NUM_BYTES; i=i+1) 
+  sum = sum + bytes[i]; 
+end 
+module mult_8b_while(a, b, q); 
+  parameter bsize = 8; 
+  input  [bsize-1 : 0] a, b; 
+  output [2*bsize-1 : 0] q; 
+  reg [2*bsize-1 : 0] q, a_t; 
+  reg [bsize-1 : 0] b_t; 
+  reg [bsize-1 : 0] cnt; 
+  always @(a or b) begin 
+    q = 0; 
+    a_t = a; 
+     b_t = b; 
+     cnt = bsize; 
+     while(cnt > 0) begin 
+       if (b_t[0]) begin 
+          q = q + a_t;     
+      end 
+      else begin 
+          q = q; 
+      end 
+      cnt = cnt - 1; 
+     a_t = a_t << 1; 
+     b_t = b_t >> 1;  
+     end 
+end 
+endmodule 
+<<<page 18>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   11 
+2024.04 
+2.1.6.6 Generate 
+generate 语句用于条件、循环描述电路。对 module,reg,assign,always,task 等语句或者模块进
+行复制，从而产生多个相同的结构。generate 语句有generate_for,generate_if,generate_case 三种
+语句。 
+generate for ：在使用generate for 进行电路描述时，需要使用genvar 申明正整数变量，用以
+for 循环判断。 
+ 
+generate if：根据模块的常量参数作为条件判断标准，用以复制模块，产生满足条件的电路。 
+ 
+generate case：使用case 语句产生满足条件的电路。 
+ 
+2.1.7 函数 
+当同一段功能描述需要重复使用时， 定义函数可以大大减少代码量。 函数的声明与使用必须在模块
+中进行，返回值的声明类型必须是有符号或无符号类型，并以过程方式实现对应组合逻辑的描述，实现
+genvar i; 
+generate  
+for(i=0;i<4;i=i+1) 
+    begin:gerfor 
+        assign temp[i]=data_in[2*i+1:2*i]; 
+    end 
+endgenerate 
+localparam S=6; 
+generate 
+    if(S<7) 
+        assign d=t0|t1|t2; 
+    else 
+        assign d=t0&t1&t2; 
+endgenerate 
+localparam S=8; 
+generate 
+    case(S) 
+        0:assign d=t0|t1|t2; 
+        1:assign d=t0&t1&t2; 
+        default:assign d=t0&t1|t2; 
+    endcase 
+endgenerate 
+<<<page 19>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   12 
+2024.04 
+增加其复用性，可读性，易维护性的优势。文件名：function.v 
+ 
+2.1.8 任务 
+任务可以把复杂的过程逻辑命名包装起来，简化调用处的代码，增加复用性，可读性，易维护性。
+文件名：task.v 
+module compare( 
+    output reg [3:0] o, 
+    input [3:0] a, b, 
+    input type, 
+    input clk 
+); 
+ 
+function [3:0] min(input [3:0] lhs, rhs); 
+begin 
+         min = lhs; 
+         if (rhs < lhs) 
+             min = rhs; 
+     end 
+endfunction 
+ 
+function [3:0] max(input [3:0] lhs, rhs); 
+      begin 
+         max = lhs; 
+         if (rhs > lhs) 
+              max = rhs; 
+     end 
+endfunction 
+ 
+always @(posedge clk) 
+     if (type) 
+         o = min(a, b); 
+     else 
+         o = max(a, b); 
+endmodule 
+<<<page 20>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   13 
+2024.04 
+ 
+  
+module compute( 
+    output reg [3:0] counter = 0, 
+    input type, 
+    input clk 
+); 
+ 
+task inc(input [3:0] step); 
+     counter = counter + step; 
+endtask 
+ 
+task dec(input [3:0] step); 
+     counter = counter - step; 
+endtask 
+ 
+always @(posedge clk) 
+     if (type) 
+         dec(1); 
+     else 
+         inc(1); 
+ 
+endmodule 
+<<<page 21>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   14 
+2024.04 
+3 TD 综合编译选项 
+TD 软件在支持编码设计的基础上还包括一套综合编译选项，该选项主要用于实现用户指定的综合
+策略，允许用户在寄存器传输级、RTL 级对综合的过程与器件进行调整，实现针对性的综合方式。下文
+将统一采用界面操作的方式分别介绍TD 中可用于调节数值，从而影响综合编译结果的选项。 
+3.1 综合选项操作 
+在菜单栏中，展开Process→Properties，弹出Properties Configuration 窗口，或者右键选择 
+FPGA Flow 中的Syn Opt→单击Properties→切换至Properties Configuration 窗口，该窗口包括读
+入文件、RTL 优化、Gate 优化等不同的参数选项，用户可根据需要自定义想要的功能。 
+ 
+图 3-1 Properties Configuration 窗口显示 
+3.2 读入文件选项（Read Design） 
+读入文件选项主要用于分析用户源文件语法语义的正确性，并根据用户的设计与具体参数综合、 编
+译出原始行为级电路结构。读入文件选项包含如下参数： 
+
+<<<page 22>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   15 
+2024.04 
+ 
+图 3-2 读入文件选项参数显示 
+参数的具体作用如下表所示： 
+表 3-1 读入文件参数介绍 
+Property Option Description 
+infer_add 
+ON 当加、减法长度大于等于min_ripple_len 参数时，使用硬件进
+位链来实现加、减法逻辑，提高timing，需要更大的面积。 
+OFF 使用LUT 来实现加、减法逻辑，timing 会差，节省面积。 
+infer_mult 
+ON 使用硬件DSP 来实现乘法逻辑。 
+OFF 使用LUT 来实现乘法逻辑。 
+infer_ram 
+ON 使用硬件BRAM 或DRAM 来实现电路中的RAM 逻辑。 
+OFF 使用LUT 与触发器来实现电路中的RAM 逻辑。 
+infer_rom 
+ON 使用硬件BRAM 来实现电路中的ROM 逻辑。 
+OFF 使用LUT 与触发器来实现电路中的ROM 逻辑。 
+infer_fsm 
+OFF 不改变FSM 的编码 
+ONEHOT 固定对FSM 使用onehot 编码 
+AUTO 对 FSM 自动选择编码方案 
+infer_reg 
+ON 优化寄存器前面的复位/置位/使能逻辑 
+OFF 不优化寄存器的复位/置位/使能逻辑 
+default_reg_initial AUTO 对于未指定初始值的寄存器，按利于优化的方式决定初始值。 
+
+<<<page 23>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   16 
+2024.04 
+Property Option Description 
+0 未指定初始值且不存在异步置位的寄存器按初始化为 0 综合 
+1 未指定初始值且不存在异步复位的寄存器按初始化为 1 综合 
+infer_shifter 
+ON 用分布式存储实现移位寄存器逻辑 
+OFF 使用普通寄存器实现 
+3.3 RTL 级优化选项（Optimize RTL） 
+在读入工程设计文件后，TD 将对设计进行 RTL 级优化。本阶段将进行多路选择器优化、数据通路
+优化、 特殊功能模块自动识别等。RTL 级优化将产生包含基本门(AND、OR、FF/Latch)和特殊功能模块的
+电路。 
+在 FPGA Flow 面板中展开 Syn Opt；在菜单栏中，展开 Process→Properties，弹出 Properties 
+Configuration 窗口，或者右键选择 FPGA Flow 中的Syn Opt→单击Properties→切换至Properties 
+Configuration 窗口，选择 Optimize RTL 进行设置。RTL 级优化选项包含如下参数： 
+ 
+图 3-3 RTL 级优化选项参数显示 
+参数的具体作用如下表所示： 
+  
+
+<<<page 24>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   17 
+2024.04 
+表 3-2 RTL 级优化参数介绍 
+Property Option Description 
+merge_equal 
+ON 搜索电路中的等价模块，将其合并以节省面积。 
+OFF 不优化等价模块。 
+opt_arith 
+ON 对用户的加减法逻辑针对面积和时序进行优化。 
+OFF 不对用户的加减法逻辑针对面积和时序进行优化。 
+infer_gsr 
+ON 使用全局异步Reset/Set 资源。 
+OFF 不使用全局异步Reset/Set 资源。 
+max_fanout 9999 如果线网扇出太大，超过这里设置的阈值，就分裂成多条线网 
+fix_undriven 
+0 对于电路中没有输入的pin，拉低。 
+1 对于电路中没有输入的pin，拉高 
+AUTO 对于电路中没有输入的pin，自动选择合理的值。 
+opt_ram 
+HIGH 针对RAM 进行优化，以节省面积。 
+LOW 不对RAM 进行优化 
+keep_hierarchy 
+FLATTEN 将所有的用户modules 打平到顶层module 
+AUTO TD 软件自动选择打平较小的用户modules 
+MANUAL 根据代码中的synthesis keep_hierarchy 决定是否打平module 
+ALL 保留所有用户modules 的层次结构 
+seq_syn 
+ON 优化逻辑等价的寄存器 
+OFF 不优化逻辑等价的寄存器 
+opt_mux 
+ON 对MUX 树的结构进行调整，以节省面积。可能对时序有一定影响 
+OFF 不对MUX 树的结构进行调整 
+min_control_set 8 控制信号（clk,ce,set/reset）相同的寄存器集合的最小门槛。 
+min_ripple_len auto 用RIPPLE 实现的最小长度，小于该值将直接使用LUT 实现。 
+merge_mux 
+ON 合并相同选择端口的级联的MUX，通常可以降低逻辑级数。 
+OFF 不合并相同选择端口的MUX。 
+opt_adder_fanout 
+ON 优化加减法的扇出，以优化时序，有时会对面积产生一定影响。 
+OFF 不优化加减法的扇出。 
+gate_sharing 
+ON 提取共同的Gate 逻辑，以节省面积 
+OFF 不优化共同的Gate 逻辑 
+3.4 门级优化选项（Optimize Gate） 
+门级优化包括普通逻辑的优化和映射、 特殊逻辑的优化和映射等综合优化。 门级优化将产生包含逻
+辑单元和专用功能单元的电路。 
+在 FPGA Flow 面板中展开 Syn Opt ；在菜单栏中，展开 Process→Properties，弹出 Properties 
+Configuration 窗口，或者右键选择 FPGA Flow 中的Syn Opt→单击Properties→切换至Properties 
+<<<page 25>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   18 
+2024.04 
+Configuration 窗口，选择Optimize Gate 进行优化选项设置。门级优化选项包含如下参数： 
+ 
+图 3-4 门级优化选项参数显示 
+参数的具体作用如下表所示： 
+表 3-3 门级优化参数介绍 
+Property Option Description 
+pack_seq_in_io 
+ON 将寄存器打包到pad 中。 
+OFF 不将寄存器打包到pad 中。 
+AUTO 根据io 时序情况决定是否将寄存器打包到pad 中。 
+pack_effort 
+HIGH 把dff 与 lut 放到尽量少的slice 中。 
+MEDIUM 把dff 与 lut 放到的中等数量的slice 中。 
+LOW 把dff 与 lut 放到的较多数量的slice 中。 
+opt_area 
+HIGH 优先优化面积，可能对时序有一定影响。 
+MEDIUM 平衡优化面积。 
+LOW 不优化面积。 
+cascade_eram 
+ON 对属于同一个RAM 逻辑的一组ERAM 进行级联优化。 
+OFF 不对 RAM 进行级联优化。 
+ph1_mux_ratio 1.0 对大于等于该 ratio 值的 MUX 进行 F78MUX 结构优化。 
+
+<<<page 26>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   19 
+2024.04 
+Property Option Description 
+map_strategy 
+1 工艺映射采用均衡策略，平衡面积和时序。 
+2 工艺映射采用级数策略，用更大的LUT 压低组合逻辑级数。 
+ 
+  
+<<<page 27>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   20 
+2024.04 
+4 TD 综合指令 
+Synthesis Directive (也有称为Attribute 或Property)是指在FPGA 综合工具中使用的一些综合
+指令。使用综合指令的目的是在尽量小的改动设计文件的情况下， 方便用户进行综合流程中的综合资源
+控制、层级结构控制、扇出控制、信号抓取调试等功能。 
+4.1  通用语法说明 
+4.1.1 Verilog与 System Verilog语法规则 
+Verilog 语言是区分大小写的，综合约束的字符需要注意保持小写。目前 FPGA 综合工具的
+Verilog/System Verilog 综合约束主要有两类写法： 
+以synthesis 起始的注释格式： 
+ 
+上述代码中attribute 是指综合约束的类型，value 是指综合约束的值。在只给出attribute 类型，
+不指定value 值时，value 为 1/true。推荐用户使用上述代码片段中的第三种格式。 
+下方是几种合法的综合指令写法示例： 
+ 
+符合Verilog 2001 标准的括号格式： 
+ 
+当value 值为数字型时，不需要写引号“”；当 value 值为字符型时， 需要加引号“”。 在只给出
+attribute 类型，不指定value 值时，value 为1/true。 
+下方是几种合法的综合指令写法示例： 
+ 
+同一个wire 有多个attribute 的写法： 
+/*synthesis attribute = value*/   
+//synthesis attribute = value 
+(*synthesis attribute = value*)  
+/*synthesis keep = true*/   //synthesis keep = true 
+/*synthesis keep = 1*/      //synthesis keep = 1 
+/*synthesis keep*/         //synthesis keep 
+(*synthesis keep = true*)  (*synthesis keep = 1*) 
+(*attribute = value*)  
+(* keep = “true” *) 
+(* keep = 1 *) 
+(* keep *) 
+<<<page 28>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   21 
+2024.04 
+ 
+空白符做间隔符： 
+ 
+逗号做间隔符： 
+ 
+多次约束相同attribute 在同一个名称时，会以最后一个生效，作用范围说明： 
+ 
+注意：使用/*synthesis attribute = value*/ 或 //synthesis attribute = value 注释格式约
+束整行时，写在分号（； ）前和写在分号（； ）后属于两种情况，在 generate 语句中会产生差异。建议
+使用 （*attribute = value*） 格式或明确将/*synthesis attribute = value*/格式约束写在分号 （； ）
+前，具体如下： 
+/*synthesis attribute1 = value1*/   /*synthesis attribute2 = value2*/ 
+/*synthesis attribute1 = value1 attribute2 = value2*/ 
+(*attribute1 = value1*) (*attribute2 = value2*) 
+(*attribute1 = value1 , attribute2 = value2*) 
+wire a,b,c;/*synthesis keep*/   //约束会标记在a,b,c 上 
+(*keep*)wire a,b,c;             //约束会标记在a,b,c 上 
+wire a,b,c/*synthesis keep*/;   //约束会标记在c 上 
+<<<page 29>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   22 
+2024.04 
+ 
+4.1.2 VHDL语法规则 
+VHDL 语言是不区分大小写的，综合约束中的 attribute 字符大小写均可，value 需要注意保持小
+写。 
+声明字符型约束： 
+ 
+声明数字型约束： 
+module syn_keep(in,clk,sel,out); 
+input clk; 
+input [3:0]in; 
+input [3:0]sel; 
+output out; 
+//test1: attribute set in tmp0 
+reg [3:0]tmp0;//synthesis keep 
+reg [3:0]tmp1; 
+ 
+generate 
+//test2: attribute set in tmp1 
+//reg [3:0]tmp0;//synthesis keep 
+//reg [3:0]tmp1; 
+ 
+//test3 attribute set in tmp0 
+//reg [3:0]tmp0/*synthesis keep*/; 
+//reg [3:0]tmp1; 
+ 
+//test4 attribute set in tmp0 
+//(*keep*)reg [3:0]tmp0; 
+//reg [3:0]tmp1; 
+ 
+begin :reg_gen 
+   always @(posedge clk)begin   
+          tmp0[sel] <= in[sel]; 
+          tmp1[sel] <= tmp0[sel]; 
+   end 
+end 
+endgenerate 
+endmodule 
+signal sig1 : std_logic; 
+attribute keep : string; 
+attribute keep of sig1 : signal is “true”; 
+<<<page 30>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   23 
+2024.04 
+ 
+声明布尔型约束： 
+ 
+标记位置说明：VHDL 的约束规则与verilog 类似，可标记位置更多。 
+4.2 TD 支持的 attribute 说明 
+4.2.1 translate_off/translate_on 
+translate_off/translate_on 只在verilog/system verilog生效，该指令是一组只针对综合工具
+生效的注释格式，综合阶段会自动忽略translate_off 和 translate_on 间的内容，仿真和形式验证等
+工具会正常识别中间内容， 用户可以利用此机制使用同一设计文件分别进行综合和仿真的验证， 该指令
+需要成对添加，单一指令不会生效。 
+约束写法： 
+此条综合约束只能使用/*synthesis translate_off*/和//synthesis translate_off 格式。 
+Verilog 案例： 
+ 
+在上述案例中，out[1]的赋值语句在综合阶段会被忽略。 
+4.2.2 full_case 
+full_case 只在verilog/system verilog 生效。在进行电路设计时，当描述的case 语句存在状
+态不全的情况时，综合器会生成锁存器。采用full_case 语句可以有效规避该风险，full_case 含义为
+不需要额外补充case 状态，主要是起到替代deafult 语句，避免生成锁存器的作用。 
+signal sig2 : std_logic; 
+attribute max_fanout : integer; 
+attribute max_fanout of sig2: signal is 50; 
+signal sig3 : std_logic; 
+attribute keep : boolean; 
+attribute keep of sig3: signal is true; 
+module translate(a,b,out); 
+ input a,b; 
+ output [1:0] out; 
+ assign out[0] = a & b; 
+ /* synthesis translate_off */ 
+ assign out[1] = a | b; 
+ /* synthesis translate_on */ 
+endmodule 
+<<<page 31>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   24 
+2024.04 
+约束写法： 
+在verilog 文件中full_case 综合约束的写法为： 
+ 
+Verilog 案例： 
+ 
+上述案例使用full_case 可以避免生成锁存器，并指示综合工具不需要添加额外的状态机状态。 
+在存在 default 语句时，full_case 不会生效。full_case 可能导致综合前后的仿真结果不一致，
+建议注意case 语句书写规范，减少使用。 
+4.2.3 parallel_case 
+parallel_case 只在verilog/system verilog 生效。在casex/casez 语句中可能包含x/z 的情况，
+各条件不是完全互斥时，综合器解析时会生成优先级顺序。parallel_case 表示 case 的各条件完全独
+立，并行执行，主要起到忽略case 语句中隐含优先级的作用。 
+约束写法： 
+在verilog 文件中综合约束的写法为： 
+ 
+Verilog 案例： 
+case (sel) // synthesis full_case 
+(*full_case*) case(sel) 
+module full_case (a,sel,out); 
+ input [3:0] a; 
+ input [3:0] sel; 
+ output reg out; 
+ always @(a or sel)            
+  case (sel)     // synthesis full_case  
+   4'b0001: out=a[0]; 
+   4'b0010: out=a[1]; 
+   4'b0100: out=a[2]; 
+   4'b1000: out=a[3]; 
+   //default: out=1'bx; 
+      endcase 
+endmodule 
+casez (sel) // synthesis parallel_case 
+(*parallel_case*) casez(sel) 
+<<<page 32>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   25 
+2024.04 
+ 
+上述案例中的casez 隐含优先级a>b>c>d，综合器会产生优先级编码逻辑，在sel=4'b1111 时，会
+将 a 赋值 1，而 b,c,d 为 0。使用 parallel_case 可以指示综合器将 a,b,c,d 赋值改为并行逻辑，在
+sel=4'b1111 时，a,b,c,d 会各自独立赋值1。 
+parallel_case 可能导致综合前后的仿真结果不一致，建议注意case 语句书写规范，减少使用。 
+4.2.4 keep 
+可选值：0 | false | 1 | true 
+约束位置：signal，wire，reg，logic，bit 等表示net 声明的位置。 
+功能说明：使用keep 命令可以保证信号不会被后续流程优化掉，从而方便用户后期调试；在wire
+上加keep 可以防止net 在前端优化过程中不被删除，在reg 上加keep 可以防止register 在前端优化
+中被删除。当使用chipwatcher，chipprobe 等工具想查看某信号却找不到时，可以在原始设计中针对
+该信号加上该Synthesis Directive。 
+约束写法： 
+在Verilog 文件中综合约束的写法为： 
+ 
+在VHDL 文件中综合约束的写法为： 
+module parallel_case (sel,a,b,c,d); 
+ input [3:0] sel; 
+ output reg a, b, c, d; 
+ always @(sel)  
+  begin 
+   {a, b, c, d} = 4'b0; 
+   casez (sel) // synthesis parallel_case  
+    4'b1???: a = 1'b1; 
+    4'b?1??: b = 1'b1; 
+    4'b??1?: c = 1'b1; 
+    4'b???1: d = 1'b1; 
+   endcase 
+  end 
+endmodule 
+wire a/*synthesis keep */; 
+(*keep*)reg [3:0] b; 
+<<<page 33>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   26 
+2024.04 
+ 
+Verilog 案例： 
+ 
+VHDL 案例: 
+ 
+4.2.5 keep_hierarchy 
+可选值：true | false 
+约束位置：需要保留的module 或module instance，entity 或label 
+signal a : std_logic; 
+attribute keep : boolean; 
+attribute keep of a : signal is true; 
+signal b : std_logic; 
+attribute keep : string; 
+attribute keep of b : signal is “true”; 
+module keep (in,out); 
+   input [1:0] in; 
+   output out; 
+   wire tmp0/*synthesis keep */;   
+   (*keep*)wire tmp1;     
+   assign tmp0 = in[0] & in[1]; 
+   assign tmp1 = in[0] | in[1]; 
+   assign out = tmp0 & tmp1; 
+endmodule 
+library ieee; 
+use ieee.std_logic_1164.all; 
+entity keep is 
+ port (in0,in1 : in std_logic; 
+ out0 : out std_logic); 
+end test_keep; 
+architecture rtl of test_keep is 
+ signal tmp0, tmp1 : std_logic; 
+ attribute KEEP : string; 
+ attribute KEEP of tmp0, tmp1 : signal is "true"; 
+ begin 
+  tmp0 <= in0 and in1; 
+  tmp1 <= in0 or in1; 
+  out0 <= tmp0 and tmp1; 
+end rtl; 
+<<<page 34>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   27 
+2024.04 
+功能说明：在全局选项keep hierarchy auto/manual 时，可以在HDL 中添加keep_hierarchy 命
+令来指定特定模块的层次是否要保留。Flatten 模式下，keep_hierarchy 无效。 
+约束写法： 
+在Verilog 文件中综合约束的写法为： 
+在module 上： 
+ 
+在module instance 上： 
+ 
+在VHDL 文件中综合约束的写法为： 
+在module 上： 
+ 
+在module instance 上： 
+ 
+Verilog 案例： 
+module test(in,out);/*keep_hierarchy = true*/ 
+(* keep_hierarchy = "true" *) module test (in, out); 
+test test0 (.in(in0), .out(out0));/* synthesis keep_hierarchy=true */ 
+(* keep_hierarchy = "true" *)test test0 (.in(in0), .out(out0)); 
+attribute keep_hierarchy : string; 
+attribute keep_hierarchy of name: architecture is "true"; 
+attribute keep_hierarchy : string; 
+attribute keep_hierarchy of name: label is "true"; 
+<<<page 35>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   28 
+2024.04 
+ 
+VHDL 案例： 
+ 
+module hierarchy_keep(in0,in1,in2,in3,out0); 
+ input in0,in1,in2,in3; 
+ output out0; 
+ wire tmp; 
+ sub sub0( 
+  .in0(in0), 
+  .in1(in1),  
+  .data_out(tmp)  
+ ); 
+ assign out0 = tmp & in2 & in3; 
+endmodule 
+ 
+module sub(in0,in1,data_out);/* synthesis keep_hierarchy=true */ 
+ input in0,in1; 
+ output data_out; 
+ assign data_out = in0 & in1; 
+endmodule 
+library ieee; 
+use ieee.std_logic_1164.all; 
+ 
+entity keep_hierarchy is 
+ port (in0,in1,in2,in3 : in std_logic; 
+ out0 : out std_logic); 
+end test_keep_hierarchy; 
+architecture rtl of test_keep_hierarchy is 
+ signal tmp : std_logic; 
+ component sub is 
+  port (in0,in1: in std_logic; 
+  data_out: out std_logic); 
+ end component; 
+ begin 
+  sub1 :sub 
+   port map( 
+    in0 => in0, 
+    in1 => in1, 
+    data_out => tmp); 
+   out0 <= tmp and in2 and in3; 
+end rtl; 
+<<<page 36>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   29 
+2024.04 
+ 
+4.2.6 ram_style 
+可选值：none | dram | bram | bram_144k 
+约束位置：能够综合为memroy 的reg 声明处或signal 声明处 
+功能说明：以注释的形式写在用户的源代码中。 
+ram_style 有以下几种值可以设置： 
+bram：指导TD 软件使用BRAM 来实现用户指定的对象，若不满足BRAM 的要求，则会使用SLICE 实现； 
+dram：指导TD 软件使用DRAM 来实现用户指定的对象，若不满足DRAM 的要求，则会使用SLICE 实现； 
+none：指导TD 软件使用SLICE 来实现用户指定的对象（前端是用REG + Gates 实现，后端是用SLICE
+实现）； 
+bram_144k：指导 TD 软件使用BRAM_144k 来实现用户指定的对象， 若不满足BRAM_144k 的要求， 则会使
+用 SLICE 实现。 
+其中dram，bram_144k 和none 没有别的变形，直接指定即可，但是bram 允许多种变形。 
+规则说明：bram{ _9k, _20k, _32k }{ (fast), (power), {area} }，花括号内为可选项，可任意
+组合，其中： 
+{ _9k, _20k, _32k }，第一个可选项指定bram 类型，不指定时由软件自行决定； 
+{ (fast), {area} }，第二个可选项指定软件partition 的策略，不指定时默认area。 
+例如： 
+bram_9k(fast)，指定9k 资源，采用fast 方式partition； 
+bram(fast)，软件自行决定bram 大小，采用fast 方式partition。 
+library ieee; 
+use ieee.std_logic_1164.all; 
+entity sub is 
+ port (in0,in1 : in std_logic; 
+ data_out : out std_logic); 
+end sub; 
+architecture rtl of sub is 
+ attribute keep_hierarchy : string; 
+ attribute keep_hierarchy of rtl : architecture is "true"; 
+ begin 
+  data_out <= in0 and in1; 
+end rtl; 
+<<<page 37>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   30 
+2024.04 
+约束写法： 
+在Verilog 文件中综合约束的写法为： 
+ 
+在VHDL 文件中综合约束的写法为： 
+ 
+Verilog 案例： 
+ 
+VHDL 案例: 
+reg [7:0] mem [127:0]/* synthesis ram_style=dram*/;  
+(*ram_style=”dram”*) reg [7:0] mem [127:0];  
+type mem_type is array (127 downto 0) of std_logic_vector (7 downto 0); 
+signal mem : mem_type; 
+attribute ram_style : string; 
+attribute ram_style of mem : signal is “dram”; 
+module ram_style (clk,din,we,wa,re,ra,dout); 
+ input clk,din,we,re; 
+ input [3:0] wa,ra; 
+ output reg [7:0] dout; 
+ reg [7:0]mem[15:0]/*synthesis ram_style = dram*/; 
+ always@(posedge clk) 
+ if(we) 
+  mem[wa] <= din; 
+ always@(posedge clk) 
+  if(re) 
+   dout <= mem[ra]; 
+endmodule 
+<<<page 38>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   31 
+2024.04 
+ 
+4.2.7 rom_style 
+可选值：none | dram | bram 
+约束位置： reg 声明处或signal 声明处 
+功能说明：以注释的形式写在用户的源代码中。 
+ram_style 有以下几种值可以设置： 
+bram：指导TD 软件使用BRAM 来实现用户指定的对象，若不满足BRAM 的要求，则会使用SLICE 实现； 
+dram：指导TD 软件使用DRAM 来实现用户指定的对象，若不满足DRAM 的要求，则会使用SLICE 实现； 
+none：指导TD 软件使用SLICE 来实现用户指定的对象。 
+library ieee; 
+use ieee.std_logic_1164.all; 
+use ieee.numeric_std.all; 
+entity ram_style is 
+ port ( 
+  clk ,we,re: in std_logic; 
+  wa,ra : in std_logic_vector(3 downto 0); 
+  din :in std_logic_vector(7 downto 0); 
+  dout: out std_logic_vector(7 downto 0)); 
+end test_ram_style; 
+architecture rtl of test_ram_style is 
+ type mem_type is array (15 downto 0) of std_logic_vector (7 downto 0); 
+ signal mem : mem_type; 
+ attribute ram_style : string; 
+ attribute ram_style of mem : signal is "bram"; 
+ begin 
+  process (clk) 
+  begin 
+    if (clk'event and clk = '1') then 
+      if (re = '1') then 
+          dout <= mem(to_integer(unsigned(ra))); 
+      end if; 
+    end if; 
+  end process; 
+  process (clk) 
+  begin 
+   if (clk'event and clk = '1') then 
+    if (we = '1') then 
+     mem(to_integer(unsigned(wa))) <= din; 
+    end if; 
+   end if; 
+  end process; 
+end rtl; 
+<<<page 39>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   32 
+2024.04 
+ 在设置ROM 的实现方式时，该指令优先级低于ram_style，ram_style 可以设置rom，但rom_style
+不可以设置ram。 
+约束写法： 
+在Verilog 文件中综合约束的写法为： 
+ 
+Verilog 案例： 
+ 
+VHDL 案例: 
+ 
+reg [7:0] mem [127:0]; //synthesis rom_style=dram 
+(*ram_style=”dram”*) reg [7:0] mem [127:0];  
+module rom_style (clk,addr,din,dout); 
+ input clk; 
+input [3:0]din; 
+input [6:0]addr; 
+ output reg [3:0] dout; 
+ reg [3:0]mem[127:0];//synthesis rom_style = dram 
+ initial begin 
+  mem[3] <= 4'b1010; 
+ end 
+ always@(posedge clk)begin 
+  dout <= mem[ra]; 
+ end 
+endmodule 
+<<<page 40>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   33 
+2024.04 
+ 
+4.2.8 max_fanout 
+可选值：大于1 的正整数 
+约束位置：signal，wire，reg，logic，bit 等表示net 声明的位置 
+功能说明：目前TD 软件中对于fanout 的设置是全局性的，如果想要指定某些网络的fanout，通
+过综合的时候自动复制instance 来降低fanout 并对时序优化提供帮助， 可以在HDL 中添加max_fanout
+命令。 
+library ieee; 
+use ieee.std_logic_1164.all; 
+use ieee.numeric_std.all; 
+entity test_rom_style is 
+port ( 
+clk ,we,re: in std_logic; 
+wa,ra : in std_logic_vector(3 downto 0); 
+din :in std_logic_vector(7 downto 0); 
+dout: out std_logic_vector(7 downto 0)); 
+end test_rom_style; 
+architecture rtl of test_rom_style is 
+type mem_type is array (15 downto 0) of std_logic_vector (7 downto 0); 
+signal mem : mem_type; 
+attribute rom_style : string; 
+attribute rom_style of mem : signal is "bram"; 
+begin 
+process (clk) 
+begin 
+if (clk'event and clk = '1') then 
+if (re = '1') then 
+dout <= mem(to_integer(unsigned(ra))); 
+end if; 
+end if; 
+end process; 
+process (clk) 
+begin 
+if (clk'event and clk = '1') then 
+if (we = '1') then 
+mem(to_integer(unsigned(wa))) <= din; 
+end if; 
+end if; 
+end process; 
+end rtl; 
+<<<page 41>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   34 
+2024.04 
+约束写法： 
+在Verilog 文件中综合约束的写法为： 
+ 
+在VHDL 文件中综合约束的写法为： 
+ 
+Verilog 案例: 
+ 
+VHDL 案例: 
+wire a/*synthesis max_fanout = 3 */; 
+(*max_fanout = 5*)reg [3:0] b; 
+signal b : std_logic; 
+attribute max_fanout : integer; 
+attribute max_fanout of b : signal is 5; 
+module max_fanout (clk,d,in,out); 
+   input clk,d; 
+   input [3:0] in; 
+   output [3:0] out; 
+   reg tmp/*synthesis max_fanout = 3*/; 
+   always @(posedge clk) 
+      tmp <= d; 
+    assign out[0] = tmp & in[0]; 
+    assign out[1] = tmp & in[1]; 
+    assign out[2] = tmp & in[2]; 
+    assign out[3] = tmp & in[3]; 
+endmodule 
+<<<page 42>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   35 
+2024.04 
+ 
+4.2.9 shifter_style 
+可选值：register | shifter | shifter_reg | reg_shifter | reg_shifter_reg 
+约束位置：表示移位链的一组reg，logic 等声明的位置  
+功能说明：shifter_style 是控制移位寄存器链综合后的资源使用方式，对于移位寄存器链，可以
+使用寄存器、移位链（SRL） 、移位链+寄存器、寄存器+移位链、寄存器+移位链+寄存器资源实现，默认
+移位链的综合方式为寄存器+移位链+寄存器。 
+从时序角度而言，不建议时序路径的终点是SRL，高速设计建议保留一个寄存器在SRL 尾。如果在
+某个模块内资源利用率较高， 那么深度较小的SRL 有可能给时序收敛带来负面影响。 此时， 可考虑将深
+度较小的SRL 转化为寄存器。 
+约束写法： 
+在Verilog 文件中综合约束的写法为： 
+library ieee; 
+use ieee.std_logic_1164.all; 
+entity maxfanout is 
+ port (clk,d : in std_logic; 
+ in0 :in std_logic_vector(3 downto 0); 
+ out0 : out std_logic_vector(3 downto 0)); 
+end test_maxfanout; 
+architecture rtl of test_maxfanout is 
+ signal tmp : std_logic; 
+ attribute max_fanout : integer; 
+ attribute max_fanout of tmp : signal is 3; 
+ begin 
+  process (clk) 
+  begin 
+   if (clk'event and clk = '1') then 
+    tmp <= d; 
+   end if; 
+  end process; 
+ out0(0) <= in0(0) and tmp; 
+ out0(1) <= in0(1) and tmp; 
+ out0(2) <= in0(2) and tmp; 
+end rtl; 
+<<<page 43>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   36 
+2024.04 
+ 
+在VHDL 文件中综合约束的写法为： 
+ 
+Verilog 案例: 
+ 
+VHDL 案例： 
+parameter APP_DEPTH = 280; 
+reg [31:0] shifter_reg[APP_DEPTH-1:0] /*synthesis shifter_style = register */; 
+always@(posedge i_clk) 
+    shifter_reg[0] <= i_data_in; 
+genvar i; 
+generate 
+    for (i=1;i<APP_DEPTH;i=i+1)  
+    begin:shifter 
+        always@(posedge i_clk) 
+            shifter_reg[i] <= shifter_reg[i-1]; 
+    end 
+endgenerate 
+always@(posedge i_clk) 
+    o_data_out <= shifter_reg[APP_DEPTH-1]; 
+signal srl : std_logic_vector(7 downto 0); 
+attribute shifter_style : string; 
+attribute shifter_style of srl : signal is “register”; 
+module shifter_style( 
+output [2:0] Q, 
+input CE, 
+input CLK, 
+input [2:0] D 
+); 
+reg [95:0] srl;//synthesis shifter_style = reg_shifter_reg 
+always@(posedge CLK) 
+if(CE) 
+srl<={D,srl[DEPTH-1:3]}; 
+assign Q=srl[2:0]; 
+endmodule 
+<<<page 44>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   37 
+2024.04 
+ 
+4.2.10 dsp_style 
+可选值：yes | no | auto  
+约束位置：  
+1. signal，wire，reg，logic，bit 等表示乘法器输出信号的net 声明的位置； 
+2. module， entity 等模块标记位置，VHDL 也可以写在architecture, component。 
+功能说明： 使用dsp_style 命令可以控制乘法器的实现方式，no 表示使用查找表实现，yes 表示使
+用专用的dsp 资源实现。在 net 连线位置的约束会对单个乘法器生效，在module 模块约束的会对整个
+模块内的所有乘法器生效。 
+约束写法： 
+在Verilog 文件中综合约束的写法为： 
+ 
+以及对于module 的约束： 
+library ieee; 
+use ieee.std_logic_1164.all; 
+entity shifter_style is 
+ port (clk,ce : in std_logic; 
+ d :in std_logic_vector(2 downto 0); 
+ q : out std_logic_vector(2 downto 0)); 
+end test_shifter_style; 
+architecture rtl of test_shifter_style is 
+ signal srl : std_logic_vector(95 downto 0); 
+ attribute shifter_style : string; 
+ attribute shifter_style of srl : signal is “reg_shifter_reg”; 
+ begin 
+  process (clk) 
+  begin 
+   if (clk'event and clk = '1') then 
+    if(ce= '1') then 
+      srl <= (d&srl(95 downto 3)); 
+    end if 
+   end if; 
+   q<=srl(2 downto 0); 
+  end process; 
+end rtl; 
+wire [5:0] c; /* synthesis dsp_style = no*/ 
+(*dsp_style="yes"*)wire [5:0] c; 
+<<<page 45>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   38 
+2024.04 
+ 
+在VHDL 文件中综合约束的写法为： 
+ 
+Verilog 案例： 
+ 
+VHDL 案例： 
+ 
+ 
+module a/*synthesis dsp_style = yes*/（） ； 
+(*dsp_style="auto"*) module a（） ； 
+signal dsp : std_logic_vector(7 downto 0); 
+attribute dsp_style : string; 
+attribute dsp_style of dsp : signal is "auto"; 
+module mult( 
+input [2:0] i0, 
+input [2:0] i1, 
+output [4:0] p 
+); 
+(*dsp_style = "yes"*)wire [4:0] mult ; 
+assign mult = i0 * i1; 
+assign p = mult; 
+endmodule 
+library ieee; 
+   use ieee.std_logic_1164.all; 
+   use ieee.std_logic_unsigned.all; 
+entity mult is 
+    port ( 
+ i0 :in std_logic_vector(2 downto 0); 
+    i1 :in std_logic_vector(2 downto 0); 
+ p : out std_logic_vector(4 downto 0)); 
+end mult; 
+ 
+architecture rtl of mult is 
+ signal mult : std_logic_vector(4 downto 0); 
+ attribute dsp_style : string; 
+ attribute dsp_style of mult : signal is "auto"; 
+begin 
+  mult <= i0 * i1; 
+  p <= mult; 
+end rtl; 
+<<<page 46>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   39 
+2024.04 
+4.2.11 fsm_encoding 
+可选值：sequential | one_hot 
+约束位置：state reg 声明的位置 
+功能说明：使用 fsm_encoding 命令可以调整状态机编码方式。sequential 表示采用顺序编码，
+one_hot 表示采用独热码。 
+约束写法： 
+在Verilog 文件中综合约束的写法为： 
+ 
+在VHDL 文件中综合约束的写法为： 
+ 
+4.2.12 allow_backward_retiming 
+可选值：true | false 
+约束位置：reg 声明的位置 
+功能说明：使用allow_backward_retiming 命令可以在保证电路功能不变的前提下， 通过移动时序
+元件（寄存器）的位置来优化时序电路。backward_retiming 表示将寄存器向前移动，false 表示不允
+许移动，true 表示允许移动，默认处理为不允许移动。 
+约束写法： 
+在Verilog 文件中综合约束的写法为： 
+ 
+在VHDL 文件中综合约束的写法为： 
+ 
+reg [3:0] a/*synthesis fsm_encoding = one_hot */; 
+(*fsm_encoding = "one_hot"*)reg [3:0] b; 
+signal a : std_logic_vector(7 downto 0); 
+attribute fsm_encoding : string; 
+attribute fsm_encoding of a : signal is “one_hot”; 
+reg a/*synthesis allow_backward_retiming = 1 */; 
+(* allow_backward_retiming = 1*)reg [3:0] b; 
+signal b : std_logic; 
+attribute allow_backward_retiming : integer; 
+attribute allow_backward_retiming of b : signal is 0; 
+<<<page 47>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   40 
+2024.04 
+Verilog 案例： 
+ 
+VHDL 案例： 
+ 
+module retiming( 
+input clk, 
+input [215:0] data_in, 
+output data_out 
+); 
+reg [215:0] in_reg; 
+(*allow_backward_retiming = 1*)reg reg0; 
+reg reg1,reg2; 
+always@(posedge clk)begin 
+in_reg <= data_in; 
+reg0 <= &in_reg; 
+reg1 <= reg0;  
+reg2 <= reg1; 
+end 
+assign out2 = reg2; 
+endmodule 
+library ieee; 
+use ieee.std_logic_1164.all; 
+use ieee.numeric_std.all; 
+entity timing is 
+ port ( 
+  clk : in std_logic; 
+  rst : in std_logic; 
+  din : in std_logic_vector(3 downto 0); 
+  dout: out std_logic_vector(3 downto 0)); 
+end timing; 
+architecture rtl of timing is 
+ signal in_reg : std_logic_vector(3 downto 0); 
+    signal reg0 : std_logic_vector(3 downto 0); 
+    signal reg1 : std_logic_vector(3 downto 0); 
+    signal reg2 : std_logic_vector(3 downto 0); 
+ signal b : std_logic; 
+ attribute allow_backward_retiming : integer; 
+ attribute allow_backward_retiming of b : signal is 0; 
+ begin 
+  process (clk,rst)begin 
+   if (rst='0')   
+          then dout<=( others=>'0');       
+         elsif rising_edge(clk) then 
+        in_reg <= din; 
+   reg0 <= in_reg; 
+            reg1 <= reg0; 
+            reg2 <= reg1; 
+            dout <= reg2; 
+        end if;  
+  end process; 
+end rtl; 
+<<<page 48>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   41 
+2024.04 
+4.2.13 allow_forward_retiming 
+可选值：true | false 
+约束位置：reg 声明的位置 
+功能说明：使用allow_forward_retiming 命令可以在保证电路功能不变的前提下，通过移动时序
+元 件 （ 寄 存 器 ） 的 位 置 来 优 化 时 序 电 路 。backward_retiming 表 示 将 寄 存 器 向 前 移 动 ，而
+forward_retiming 表示将寄存器向后移动。 
+约束写法： 
+在Verilog 文件中综合约束的写法为： 
+ 
+在VHDL 文件中综合约束的写法为： 
+ 
+Verilog 案例： 
+ 
+VHDL 案例： 
+reg a/*synthesis allow_forward_retiming = 1 */; 
+(* allow_backward_retiming = 1*)reg [3:0] b; 
+signal b : std_logic; 
+attribute allow_backward_retiming : integer; 
+attribute allow_backward_retiming of b : signal is 0; 
+module retiming( 
+input clk, 
+input [215:0] data_in, 
+output data_out 
+); 
+reg [215:0] in_reg; 
+(*allow_forward_retiming = 1*)reg reg0; 
+reg reg1,reg2; 
+always@(posedge clk)begin 
+in_reg <= data_in; 
+reg0 <= &in_reg; 
+reg1 <= reg0;  
+reg2 <= reg1; 
+end 
+assign out2 = reg2; 
+endmodule 
+<<<page 49>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   42 
+2024.04 
+ 
+Retiming 可以起到时序提升的效果但有两方面副作用：运行时间花费较多，retiming 会改变网表
+结构和名称，导致前后网表的对应关系较难匹配。因此应尽量少用或不用retiming 进行网表优化。 
+TD 还有一个全局 Retiming 配合 SDC 使用，目前暂时未开放。有部分综合工具介绍的pipelining
+也属于Retiming 的一部分。 
+library ieee; 
+use ieee.std_logic_1164.all; 
+use ieee.numeric_std.all; 
+entity timing is 
+ port ( 
+  clk : in std_logic; 
+  rst : in std_logic; 
+  din : in std_logic_vector(3 downto 0); 
+  dout: out std_logic_vector(3 downto 0)); 
+end timing; 
+architecture rtl of timing is 
+ signal in_reg : std_logic_vector(3 downto 0); 
+    signal reg0 : std_logic_vector(3 downto 0); 
+    signal reg1 : std_logic_vector(3 downto 0); 
+    signal reg2 : std_logic_vector(3 downto 0); 
+ signal b : std_logic; 
+ attribute allow_forward_retiming : integer; 
+ attribute allow_forward_retiming of b : signal is 3; 
+ begin 
+  process (clk,rst)begin 
+   if (rst='0')   
+          then dout<=( others=>'0');       
+         elsif rising_edge(clk) then 
+        in_reg <= din; 
+   reg0 <= in_reg; 
+            reg1 <= reg0; 
+            reg2 <= reg1; 
+            dout <= reg2; 
+        end if;  
+  end process; 
+end rtl; 
+<<<page 50>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   43 
+2024.04 
+DFF DFF DFF DFF DFFLUT LUT LUTLUT... ...
+关键路径
+Retiming 后的期望效果
+DFF LUT DFF LUT DFF LUT DFF LUT DFF
+ 
+图 4-1 Retiming 效果显示 
+4.2.14 preserve 
+可选值：0 | false | 1 | true 
+约束位置：reg，logic 等寄存器的声明位置 
+功能说明：使用preserve 命令可以保证寄存器不会合并或优化成常量，同时可以保留输出悬空的
+寄存器。主要用于某些抗干扰冗余设计和用户调试。 
+约束写法： 
+在Verilog 文件中综合约束的写法为： 
+ 
+在VHDL 文件中综合约束的写法为： 
+ 
+Verilog 案例： 
+reg a/*synthesis preserve */; 
+(*preserve*)reg [3:0] b; 
+signal a : std_logic; 
+attribute preserve : boolean; 
+attribute preserve of a : signal is true; 
+signal b : std_logic; 
+attribute preserve : string; 
+attribute preserve of b : signal is “true”; 
+<<<page 51>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   44 
+2024.04 
+ 
+VHDL 案例： 
+module preserve( 
+input clk,rst, 
+input [7:0] datain, 
+output [7:0] data0, 
+output [7:0] data1 
+); 
+(*preserve*)reg [7:0]data_en0; 
+reg [7:0]data_en1; 
+always@(posedge clk or posedge rst)begin  
+if(rst)begin 
+data_en0 <= 'd0; 
+data_en1 <= 'd0; 
+  end 
+else begin 
+data_en0 <= datain; 
+data_en1 <= datain; 
+  end 
+end 
+assign data0 = data_en0; 
+assign data1 = data_en1; 
+endmodule 
+<<<page 52>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   45 
+2024.04 
+ 
+使用 preserve 命令可以帮助用户做到以下两点：1.保证寄存器不会合并或优化成常量，2.同时可
+以保留输出悬空的寄存器。 
+该约束和TD 使用tcl force_keep -a {name}功能基本一致。 （注意name 是read.v 的inst name，
+不是net name,同时需要注意层级，写全层级名称）。 
+4.2.15 use_ripple 
+可选值：0 | 1  
+约束位置：wire，logic 等表示加法器输出的位置 
+功能说明：使用use_ripple 命令可以控制加、 减法器的资源实现方式，0 表示优先使用LUT 实现，
+1 表示优先使用进位链结构实现。 
+约束写法： 
+在Verilog 文件中综合约束的写法为： 
+library ieee; 
+use ieee.std_logic_1164.all; 
+entity preserve is 
+port (clk,rst : in std_logic; 
+data_in :in std_logic_vector(3 downto 0); 
+data0 :out std_logic_vector(3 downto 0); 
+data1 : out std_logic_vector(3 downto 0)); 
+end test_preserve; 
+architecture rtl of test_preserve is 
+signal data_en0 : std_logic_vector(3 downto 0); 
+signal data_en1 : std_logic_vector(3 downto 0); 
+attribute preserve : boolean; 
+attribute preserve of data_en0 : signal is true; 
+begin 
+process (clk,rst)begin 
+if (rst = '1') then 
+data_en0 <= B"0000"; 
+data_en1 <= B"0000";  
+elsif (clk'event and clk = '1') then 
+data_en0 <= data_in; 
+data_en1 <= data_in;  
+end if; 
+end process; 
+data0 <= data_en0; 
+data1 <= data_en1; 
+end rtl; 
+<<<page 53>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   46 
+2024.04 
+ 
+在VHDL 文件中综合约束的写法为： 
+ 
+Verilog 案例： 
+ 
+VHDL 案例： 
+wire [3:0] a/*synthesis use_ripple = 1 */; 
+(*use_ripple = 0*)wire [3:0] b; 
+signal b : std_logic_vector (3 downto 0); 
+attribute use_ripple : integer; 
+attribute use_ripple of b : signal is 0; 
+module use_ripple( 
+input clk, 
+input [3:0] a, 
+input [3:0] b, 
+output reg [4:0] o 
+); 
+(*use_ripple = 1*)wire [4:0] s ; 
+assign s = a + b; 
+always@(posedge clk)begin  
+o <= s; 
+end 
+endmodule 
+<<<page 54>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   47 
+2024.04 
+ 
+4.2.16 clock_buffer 
+可选值：gclk | sclk | lclk | mlclk | none  
+约束位置：时钟、复位等信号的声明位置 
+功能说明：该指令主要用以强制设置时钟线网的模式，根据设定以不同时钟资源进行局部互联。 
+约束写法： 
+在Verilog 文件中综合约束的写法为： 
+ 
+Verilog 案例： 
+library ieee; 
+use ieee.std_logic_1164.all; 
+use IEEE.std_logic_arith.all; 
+USE IEEE.std_logic_unsigned.ALL; 
+entity use_ripple is 
+port (clk : in std_logic; 
+a :in std_logic_vector(3 downto 0); 
+b :in std_logic_vector(3 downto 0); 
+o : out std_logic_vector(3 downto 0) 
+); 
+end test_use_ripple; 
+architecture rtl of test_use_ripple is 
+signal s : std_logic_vector(3 downto 0); 
+attribute use_ripple : integer; 
+attribute use_ripple of s : signal is 1; 
+begin 
+s <= a + b; 
+process (clk) 
+begin 
+if (clk'event and clk = '1') then 
+o <= s; 
+end if; 
+end process; 
+end rtl; 
+input sys_clk  /*synthesis clock_buffer = sclk */; 
+input sys_rstn  /*synthesis clock_buffer = gclk */; 
+<<<page 55>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   48 
+2024.04 
+ 
+module clock_buffer (sys_clk,sys_clk2,sys_rstn,beep,beep2 );                             
+input  sys_clk      /* synthesis clock_buffer = sclk */   ;    
+input    sys_clk2     /* synthesis clock_buffer = none */   ; 
+input    sys_rstn     /* synthesis clock_buffer = gclk */   ; 
+output  beep; 
+output  beep2;                 
+reg   beep; 
+reg   beep2; 
+reg  [24:0] div_cnt; 
+reg  [15:0] delay_cnt; 
+wire [15:0] delay_end; 
+reg  [24:0] div_cnt2; 
+reg  [15:0] delay_cnt2; 
+wire [15:0] delay_end2; 
+parameter   clk_divider0=56817; 
+parameter   clk_divider1=28408; 
+assign delay_end=div_cnt[24] ? clk_divider0 : clk_divider1; 
+assign delay_end2=div_cnt2[24] ? clk_divider0 : clk_divider1; 
+ 
+always@(posedge sys_clk or negedge sys_rstn)begin 
+if(!sys_rstn) 
+div_cnt<=25'd0; 
+     else 
+        div_cnt<=div_cnt+1'b1; 
+end 
+always@(posedge sys_clk or negedge sys_rstn) begin 
+    if(!sys_rstn) 
+        begin 
+            beep<=1'b0; 
+            delay_cnt<=delay_end; 
+        end 
+    else if(delay_cnt==16'd0) 
+        begin 
+            beep<=~beep; 
+            delay_cnt<=delay_end; 
+        end 
+    else 
+        begin 
+            beep<=beep; 
+            delay_cnt<=delay_cnt-1'b1; 
+        end 
+end 
+always@(posedge sys_clk2 or negedge sys_rstn) begin 
+      if(!sys_rstn) 
+         begin 
+             beep2<=1'b0; 
+             delay_cnt2<=delay_end2; 
+         end 
+      else if(delay_cnt2==16'd0) 
+         begin 
+             beep2<=~beep2; 
+             delay_cnt2<=delay_end2; 
+         end 
+      else 
+         begin 
+             beep2<=beep2; 
+             delay_cnt2<=delay_cnt2-1'b1; 
+         end 
+     end 
+endmodule 
+<<<page 56>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   49 
+2024.04 
+4.2.17 resource_sharing 
+可选值：true | false  
+约束位置：运算变量的声明位置 
+功能说明：当 mux 不能作为控制逻辑吸收到 DFF 中，且 mux 的数据端输入存在多个相同的操作符
+时，可使用该综合指令，调整operator + mux 的网表结构，从而优化电路的面积。 
+约束写法： 
+在Verilog 文件中综合约束的写法为： 
+ 
+Verilog 案例： 
+ 
+VHDL 案例： 
+(*resource_sharing = "true"*)wire [8:0] sum;  
+module resource_sharing(a,b,c,d,s,o); 
+input [7:0] a; 
+input [7:0] b; 
+input [7:0] c; 
+input [7:0] d; 
+input s; 
+output[8:0] o; 
+(*resource_sharing = "true"*)wire [8:0] sum;  
+assign sum = s ? a + b:c + d; 
+assign o = sum; 
+endmodule 
+<<<page 57>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   50 
+2024.04 
+ 
+4.2.18 force_ram 
+约束位置：可以综合成Memory 的reg 声明处或signal 声明处 
+功能说明：当用户在generate for语句内部中定义读、 写Memory 时， 综合器通常不能主动跨层次
+的推断该Memory 为ram， 但用户知道该Memory 满足ram 条件， 则可以使用该综合指令强制实现为ram。 
+约束写法： 
+在Verilog 文件中综合约束的写法为： 
+ 
+Verilog 案例： 
+library ieee; 
+   use ieee.std_logic_1164.all; 
+   use ieee.std_logic_unsigned.all; 
+entity resource_sharing is 
+   port ( 
+      a  : IN STD_LOGIC_VECTOR(7 DOWNTO 0); 
+      b  : IN STD_LOGIC_VECTOR(7 DOWNTO 0); 
+      c  : IN STD_LOGIC_VECTOR(7 DOWNTO 0); 
+      d  : IN STD_LOGIC_VECTOR(7 DOWNTO 0); 
+      s  : IN STD_LOGIC; 
+      o  : OUT STD_LOGIC_VECTOR(8 DOWNTO 0) 
+   ); 
+end resource_sharing; 
+architecture trans of resource_sharing is 
+   signal sum : STD_LOGIC_VECTOR(8 DOWNTO 0); 
+begin 
+      sum <= ('0' & a + b) when (s = '1') else 
+          ('0' & c + d); 
+   o <= sum; 
+end trans; 
+reg [7:0] mem [31:0]   /* synthesis force_ram */; 
+(* force_ram *)reg [7:0] mem [31:0]; 
+<<<page 58>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   51 
+2024.04 
+ 
+4.2.19 no_ram 
+约束位置：可以综合成Memory 的reg 声明处或signal 声明处 
+功能说明：当用户不希望某个Memory 使用ram 来实现时，可以添加本条综合指令。 
+约束写法： 
+在Verilog 文件中综合约束的写法为： 
+ 
+在VHDL 文件中综合约束的写法为： 
+ 
+Verilog 案例： 
+module force_ram#( 
+ parameter A = 1 
+ )( 
+input clk, 
+input [3:0] read_addr, 
+input [3:0] in_dia, 
+output[3:0] doa 
+); 
+reg [3:0] mem [3:0];//synthesis force_ram 
+genvar i; 
+generate for(i = 0; i <= A; i = i + 1;)begin:for_blk 
+  always@(posedge clk)begin 
+   mem [i] <= in_dia[i]; 
+  end 
+ end 
+ endgenerate 
+ assign doa = mem[read_addr]; 
+endmodule 
+reg [7:0] mem [31:0]   /* synthesis no_ram */; 
+(* no_ram *)reg [7:0] mem [31:0]; 
+  attribute no_ram: integer; 
+  attribute no_ram of ram: signal is 1; 
+<<<page 59>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   52 
+2024.04 
+ 
+VHDL 案例： 
+ 
+module no_ram ( 
+input clk,  
+input [3:0] read_addr,  
+input [3:0] write_addr, 
+input [3:0] dia,  
+output [3:0] doa 
+); 
+reg [3:0] mem [3:0]; // synthesis no_ram 
+always@(posedge clk) begin 
+   mem [write_addr] <= dia; 
+end 
+assign doa = mem[read_addr]; 
+endmodule 
+library ieee; 
+use ieee.std_logic_1164.all; 
+entity ram is 
+    port ( 
+        clk     : in  std_logic; 
+        addr    : in  std_logic_vector(2 downto 0); 
+        din     : in  std_logic_vector(7 downto 0); 
+        we      : in  std_logic; 
+        dout    : out std_logic_vector(7 downto 0) 
+    ); 
+end ram; 
+architecture behavioral of ram is 
+type mem_type is array (0 to 7) of  
+std_logic_vector(7 downto 0); 
+    signal ram : mem_type := ( 
+        x"00",  -- address 0 
+        x"00",  -- address 1 
+        x"00",  -- address 2 
+        x"00",  -- address 3 
+        x"00",  -- address 4 
+        x"00",  -- address 5 
+        x"00",  -- address 6 
+        x"00"   -- address 7 
+    ); 
+  attribute no_ram: integer; 
+  attribute no_ram of ram: signal is 1; 
+begin 
+    process (clk) 
+    begin 
+        if rising_edge(clk) then 
+            if we = '1' then 
+                ram(to_integer(unsigned(addr))) <= din; 
+            end if; 
+            dout <= ram(to_integer(unsigned(addr))); 
+        end if; 
+    end process; 
+end behavioral; 
+<<<page 60>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   53 
+2024.04 
+4.2.20 bound 
+功能说明：在物理实现（physical implementation）阶段，用户可以指定器件布局的区域约束，
+简单的说， 就是限制指定的一组器件只可以放置在指定的区域内。 区域约束常用于保留之前的芯片设计
+的性能，或者是为芯片布局作平面规划（floorplanning）。 
+TD 支持三种不同类型的区域约束：auto，floating 和 fixed。 
+auto 类型允许软件自动决定布局区域，尽力将指定的一组器件放置在相互临近的位置。用户可以
+指定软件处理该auto 类型区域约束的约束级别(effort level):low, medium 和 high。 
+floating 类型的区域约束，用户需要给定矩形区域的大小:width 和 height,由软件自动决定布局
+的位置，并将指定的器件组放置在该矩形区域内。 
+fixed 类型的区域约束， 用户需要给定矩形区域的大小(width 和 height)和位置(origin， 即矩形
+左下角坐标)，软件将指定的器件组放置在该矩形区域内。另外，用户可以指定免约束的器件类型
+(excluded types)， 对指定的器件组中的某些类型的器件不做区域约束。 缺省情况下， 如果空间允许的
+话，指定的器件组外的其他器件也可以放置在给定区域内;用户如果为了保留可用的布线空间，可以设
+置区域约束为reserved，即不允许指定器件外的其他器件放置在该区域内。 
+使用场景：在adc 内使用，不能在HDL 内描述，用户通过给定矩形区域的大小（width 和height）
+和位置（origin）指定器件放置位置。 
+adc 示例： 
+create_bound{bound0}-mode auto –width 60 –hight 80 –origin {30 100} 
+add_cells_to_bound –bound bound0 –cells inst_name 
+生成一个从 30，100 坐标开始，宽 60column，高 80row 的一个 bound，区域名 bound0。然后把指
+定的cell 下的所有instance 都加入这个bound。 
+  
+<<<page 61>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   54 
+2024.04 
+5 HDL 编码技巧 
+本章节主要介绍数字逻辑电路中常见的描述方法、 技巧、 功能模块等方面， 帮助用户快速建立起基
+于 TD 的HDL 编码能力。 
+5.1 表达式与操作符 
+表达式出现在赋值操作符右侧、条件判断的括号中、或者在其它表达式中作为子表达式。 
+表达式由操作数和操作符组成，不同的操作符会综合出不同的组合逻辑电路。 
+5.1.1 合并、重复 
+合并操作用 { } 操作符来表示，一般进行合并操作后，位宽为：参与合并的信号全部位宽之和。 
+ 
+重复操作用 { { } } 操作符来表示，重复后的位宽为：被重复信号的位宽与重复次数之积。 
+ 
+5.1.2 移位 
+左移操作用 << 表示，右移操作用 >> 表示，移位后空出的位置补0。 
+ 
+算术右移操作用 >>> 表示，移位后空出的位置补操作数最高位。 
+ 
+5.1.3 非、与、或、异或、同或 
+按位非操作用 ~ 表示，按位与操作用 & 表示，按位或操作用 | 表示，按位异或操作用 ^ 表示，
+按位同或操作用 ~^ 表示。 
+wire a[3:0]; 
+wire b[3:0]; 
+wire c[7:0] = {a, b}; 
+wire a[3:0]; 
+wire b[7:0] = {2{a}}; 
+wire a[3:0]; 
+wire b[3:0] = a << 1; 
+wire c[3:0] = a >> 1; 
+wire a[3:0]; 
+wire b[3:0] = a >>> 1; 
+<<<page 62>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   55 
+2024.04 
+如果操作符两侧操作数的位宽不同，窄操作数会在高位用零补齐，输出位宽同输入位宽。 
+ 
+缩位与操作用 & 表示，缩位或操作用 | 表示，缩位异或操作用 ^ 表示，缩位同或操作用 ~^ 表
+示。 
+ 
+逻辑非操作用 ! 表示，逻辑与操作用 && 表示，逻辑或操作用 || 表示。 
+ 
+逻辑操作的操作数和结果都是1bit 位宽， 如果多bit 位宽操作数进行逻辑操作会进行隐式缩位或。
+如果多 bit 位宽信号作为条件分支语句或条件选择操作符的判断条件，同样会有隐式的多 bit 缩位或
+的操作。 
+5.1.4 条件选择 
+条件选择操作以 ? : 表示。 
+ 
+条件选择操作会综合成2 选1 多路选择器。 
+5.1.5 加、减 
+wire a[3:0]; 
+wire b[3:0]; 
+wire c[3:0] = ~a[3:0]; 
+wire d[3:0] = a[3:0] & b[3:0]; 
+wire e[3:0] = a[3:0] | b[3:0]; 
+wire f[3:0] = a[3:0] ^ b[3:0]; 
+wire g[3:0] = a[3:0] ~^ b[3:0]; 
+wire a[3:0]; 
+wire b = &a[3:0]; 
+wire c = |a[3:0]; 
+wire d = ^a[3:0];  
+wire e = ~^a[3:0]; 
+wire a; 
+wire b; 
+wire c = !a; 
+wire d = a && b; 
+wire e = a || b; 
+wire s, y, n; 
+wire o = s ? y : n; 
+<<<page 63>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   56 
+2024.04 
+加（+） ，减（-）操作符可用于算术运算。 
+ 
+加减操作符会综合出加法/减法算术单元组合逻辑。 
+ 
+5.1.6 比较 
+比较操作有 <、<=、>、>=、==、!= 等六种。 
+ 
+TD 综合中 === 和 ==，!== 和 != 无区别，使用短的即可。 
+5.1.7 取址 
+取址或索引操作是 [ ] 操作符。 
+以组合逻辑的形式在宽信号中截取，会综合成多路选择器。 
+ 
+reg 型多维数组只有少数独立的读写操作会被推导为Memory，如下示例可推导为Memory。 
+wire [31:0] a, b; 
+assign sum = a + b; 
+assign diff = a - b; 
+wire [31:0] a, b; 
+assign less_than = a < b; 
+assign less_equal = a <= b; 
+assign greater_than = a > b; 
+assign greater_equal = a >= b; 
+assign equal = a == b; 
+assign unequal = a != b; 
+wire [63:0] data; 
+wire [5:0] sel; 
+wire bit = data[sel]; 
+wire [7:0] byte = data[sel+:8]; 
+<<<page 64>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   57 
+2024.04 
+ 
+5.1.8 乘 
+乘法操作符是 *。 有符号数和无符号数都可以参与乘法， 分别按符号定义得到结果。 乘法操作会综
+合出逻辑乘法运算单元组合逻辑。 
+ 
+5.1.9 除、模、乘方 
+除（/） 、模（%） 、乘方（**）在电路综合中占用面积较大，级数多，需要尽量避免，若用户需要该
+方面功能，则可采用等价逻辑进行实现，从而规避其缺点。 
+5.1.10 操作符优先级 
+Verilog HDL 一个表达式里可以包括多个操作符。要注意操作符的优先级和执行方向，比如先乘除
+后加减。要注意位运算操作优先级很低，建议加上括号以避免错误。 
+ 
+更多规则可以参考 IEEE Standard for Verilog 5.1.2 Operator Precedence。 
+reg [7:0] mem[1023:0]; 
+wire [9:0] addr; 
+wire [7:0] din, dout; 
+wire wclk, we; 
+always @(posedge wclk) 
+ mem[addr] = din; 
+assign dout = mem[addr]; 
+wire [7:0] a, b; 
+assign p1 = a * b; 
+assign p2 = $signed(a) * $signed(b); 
+wire [31:0] a; 
+wire [31:0] mask = 32'hFFFF_0000; 
+wire high_zero = (a & mask) == 0; 
+<<<page 65>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   58 
+2024.04 
+ 
+图 5-1 操作符优先级显示 
+5.2 组合逻辑 
+在数字电路中，根据逻辑的区别，数字电路可以分成两大类，一类叫做组合逻辑电路、 另一类叫做
+时序逻辑电路。组合逻辑电路在逻辑功能上的特点是任意时刻的输出仅仅取决于该时刻的输入， 与电路
+原来的状态无关。因此组合逻辑是新值只依赖输入相关的值。 
+5.2.1 连续赋值 
+连续赋值用于组合逻辑的建模，由一句 assign 语句表示， 将等号右侧的表达式组合逻辑产生的输
+出转给等号左侧的信号。连续赋值也可以直接在信号定义wire 语句处表示，该描述语句禁止出现在过
+程块中。 
+ 
+5.2.2 过程赋值 
+过程赋值进行组合逻辑建模时，只能在initial 或always 语句块中描述，并且只允许对变量数据
+类型赋值。在always 语句块的敏感表中，需要列出所有依赖的信号，或用一个星号表示。 
+wire a, b; 
+wire c; 
+assign c = a & b; 
+wire d = a | b; 
+<<<page 66>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   59 
+2024.04 
+ 
+过程赋值可以按条件分支赋值。 
+ 
+过程赋值时，如果在一个过程里出现多次赋值，按最后一次赋值生效。 
+ 
+过程赋值时采用阻塞式赋值，上文赋值会对下文赋值产生影响。 
+ 
+5.2.3 避免时序逻辑 
+过程赋值时要保证每个分支都要给reg 信号赋值， 且不能是reg 信号本身。 尤其要注意有没有漏掉
+if 的 else 分支和 case 的 default 分支。如果出现某些分支不赋值，或等于reg 本身，则 reg 信号的
+wire a, b; 
+reg c; 
+always @(a, b) 
+c = a & b; 
+reg d; 
+always @(*) 
+    d = a | b; 
+wire a, b; 
+reg c; 
+always @(*) 
+if (a == 0) 
+     c = 1'b0; 
+else 
+     c = b; 
+wire a, b; 
+reg c; 
+always @(*) begin 
+c = a & b; 
+c = a | b; 
+end 
+wire a, b, c; 
+reg o; 
+always @(*) begin 
+ o = 1'b1; 
+o = o & a; 
+o = o & b; 
+o = o & c; 
+end 
+<<<page 67>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   60 
+2024.04 
+新值对当前值有依赖，会综合成时序逻辑（latch）。 
+ 
+5.2.4 避免组合逻辑环 
+组合逻辑环是指不经过任何时序逻辑， 例如寄存器，直接将组合逻辑电路的输出信号反馈到其输入
+节点而形成的环路。组合逻辑环对于在功能设计中危害性极大，因此要避免组合逻辑中输入依赖自己，
+从而构成组合逻辑环。 
+ example_1： 
+ 
+ example_2： 
+ 
+ example_3： 
+ 
+如果出现组合逻辑环， 需要重新检查设计。 如果用户设计需要由当前值生成新值的逻辑， 建议改成
+时序逻辑写法。 
+wire a, b, c; 
+reg o; 
+always @(*)  
+if (a) 
+     o = b; 
+else if (c) 
+  o = o; 
+else 
+  o = o; 
+wire a, b; 
+assign a = ~b; 
+assign b = ~a; 
+wire [31:0] a; 
+assign a = a + 1; 
+wire a, b, c; 
+reg o; 
+always @(*) begin 
+o = o & a  
+o = o & b; 
+o = o & c; 
+end 
+<<<page 68>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   61 
+2024.04 
+ 
+d
+clk
+qd_c
+db_c
+p
+pb
+p_c
+pb_c
+ 
+图 5-2 时序逻辑下的逻辑环 
+以上门级描述改成时序逻辑写法后， 会直接综合成DFF，用FPGA 上的DFF 资源来实现， 效果更好。 
+ 
+module logical_ring( 
+    output q, 
+    input d, 
+    input clk 
+); 
+and(d_c, d, ~clk); 
+and(db_c, ~d, ~clk); 
+or(p, d_c, ~pb); 
+or(pb, db_c, ~p); 
+and(p_c, p, clk); 
+and(pb_c, pb, clk); 
+or(q, p_c, ~qb); 
+or(qb, pb_c, ~q); 
+endmodule 
+module dff( 
+    output reg q, 
+    input d, 
+    input clk 
+); 
+always @(posedge clk) 
+q <= d; 
+endmodule 
+<<<page 69>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   62 
+2024.04 
+d
+clk
+D
+>
+Q q
+DFF
+ 
+图 5-3 DFF 显示 
+5.2.5 避免不稳定组合逻辑环 
+与稳定组合逻辑环相比，不稳定的组合逻辑环输出值会出现 0、1 跳变，即，当设计出不稳定的组
+合逻辑时， 电路中的信号会在特定的状态下进入振荡状态。不稳定组合逻辑环违反了电路设计中的同步
+原则，从而导致设计的电路出现大量问题，包括：信号不稳定，出现反复振荡，造成电路大功率消耗；
+产生毛刺；时序违规等。 不稳定组合逻辑环会造成设计系统极不稳定， 因此在设计中要避免不稳定组合
+逻辑环的构造。 
+ 
+5.3 时序逻辑 
+时序逻辑电路的输出不仅取决于当前输入值， 还与当前状态保持一定关系， 因此时序逻辑电路中除
+具有逻辑运算功能的组合电路外， 还必须有能够记忆电路状态的存储单元或延迟单元， 这些存储或延迟
+逻辑单元主要由锁存器或触发器组成。 
+5.3.1 DFF 
+DFF 逻辑由一个敏感表为时钟信号边沿触发的always 块描述。 时钟边沿可以为posedge， 也可以为
+negedge。 
+ example_1： 
+ 
+ example_2： 
+wire a, b; 
+assign a = ~b; 
+assign b = a; 
+wire clk, d; 
+reg q; 
+always @(posedge clk)  
+q <= d; 
+<<<page 70>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   63 
+2024.04 
+ 
+不可以双沿触发。 
+ 
+不可以多时钟沿触发。 
+ 
+时序逻辑中的过程赋值也可以条件赋值。 
+ 
+过程赋值时，如果在一个过程里出现多次赋值，按最后一次赋值生效。 
+ 
+过程赋值时采用阻塞式赋值，上文赋值会对下文赋值产生影响。 
+wire clk, d; 
+reg q; 
+always @(negedge clk)  
+q <= d; 
+wire clk, d; 
+reg q; 
+always @(clk)  
+q <= d; 
+wire clk1, clk2, d; 
+reg q; 
+always @(posedge clk1, posedge clk2) 
+q <= d; 
+wire a, b; 
+reg c; 
+always @(posedge clk) 
+if (a == 0) 
+     c = 1'b0; 
+else 
+     c = b; 
+wire a, b; 
+reg c; 
+always @(posedge clk) begin 
+c = a & b; 
+c = a | b; 
+end 
+<<<page 71>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   64 
+2024.04 
+ 
+5.3.2 Latch 
+Latch 是一种对脉冲电平敏感的电路， 通常将电平触发的逻辑综合成latch。 除此之外，if-else 结
+构下的分支未分配任何内容；case 结构下分支没有包含所有情况且没有default 语句都会产生latch。
+TD 对于latch 逻辑会报 warning。TD 不支持实现用户的latch 逻辑，需要用户排查，去除。 
+ example_1： 
+ 
+ example_2： 
+ 
+ example_3： 
+ 
+5.3.3 DFF初值设定 
+时序逻辑可以设置初值。可以在定义时设置，或在initial 语句中设置。 
+ example_1： 
+wire a, b, c; 
+reg o; 
+always @(posedge clk) begin 
+ o = 1'b1; 
+o = o & a; 
+o = o & b; 
+o = o & c; 
+end 
+wire o, i, en; 
+assign o = en ? i : o; 
+wire i, en; 
+reg o; 
+always @(*) 
+ o = en ? i : o; 
+wire i, en; 
+reg o; 
+always @(*) 
+ if (en) 
+o = i; 
+ else 
+  o = o; 
+<<<page 72>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   65 
+2024.04 
+ 
+ example_2： 
+ 
+对于数组，可以在 initial 中用 for 循环设置初值，也可以用$readmemb、$readmemh 函数设置初
+值。 
+ example_1： 
+ 
+ example_2： 
+ 
+5.3.4 异步 set/reset 
+异步的set/reset 信号的边沿也需要标记在 DFF 行为描述的敏感表里，通常必须在always 块的最
+开始判断有效并赋常数。如果在赋值表达式中引用了敏感电平列表中没有列出的信号， 在综合时将会为
+没有列出的信号综合一个mux 进行选择。 
+异步reset，上升沿有效。 
+wire clk, d; 
+reg q; 
+initial q = 1'b0; 
+always @(posedge clk)  
+q <= d; 
+wire clk, d; 
+reg q = 1'b0; 
+always @(posedge clk)  
+q <= d; 
+reg [7:0] bytes[3:0]; 
+integer i; 
+initial begin 
+ for (i=0; i<4; i=i+1) 
+  bytes[i] = i; 
+end 
+reg [7:0] bytes[3:0]; 
+integer i; 
+initial begin 
+ $readmemb("bytes.txt", bytes); 
+end 
+00000000 
+00000001 
+00000010 
+00000011 
+<<<page 73>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   66 
+2024.04 
+  
+异步reset，下降沿有效。 
+ 
+异步set，上升沿有效。注意：异步set 的置位值必须是1。 
+  
+异步set，下降沿有效。 
+ 
+异步set/reset 的边沿和时钟信号无关，可以同方向，也可以反方向，不能综合双沿触发。 
+wire clk, rst, d; 
+reg q; 
+always @(posedge clk, posedge rst) 
+if (rst) 
+q <= 1'b0; 
+else 
+q <= d; 
+wire clk, rstn, d; 
+reg q; 
+always @(posedge clk, negedge rstn) 
+if (!rstn) 
+q <= 1'b0; 
+else 
+q <= d; 
+wire clk, set, d; 
+reg q; 
+always @(posedge clk, posedge set) 
+if (set) 
+q <= 1'b1; 
+else 
+q <= d; 
+wire clk, setn, d; 
+reg q; 
+always @(negedge clk, posedge setn) 
+if (setn) 
+q <= 1'b1; 
+else 
+q <= d; 
+<<<page 74>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   67 
+2024.04 
+ 
+不能综合有异步set 和异步reset 的逻辑，禁止如下代码片段。 
+ 
+异步set/reset 必须赋常数， 不能是可变信号， 如下代码片段所示：变量value 无法当作寄存器置
+位或复位的值。 
+ 
+DFF 可以既有异步set/reset， 又有初值。要注意， 异步set/reset 的值要保证和初始值极性相同，
+即，当初始值为1 时，置位时的赋值也要为1；当初始值为0 时，复位时的赋值也为0。 
+ 
+wire clk, rst, d; 
+reg q; 
+always @(posedge clk, rst) 
+if (rst) 
+q <= 1'b0; 
+else 
+q <= d; 
+wire clk, set, reset, d; 
+reg q; 
+always @(posedge clk, posedge set, posedge reset) 
+if (set) 
+q <= 1'b1; 
+ else if (rst) 
+  q <= 1'b0; 
+else 
+q <= d; 
+wire clk, rst, value, d; 
+reg q; 
+always @(posedge clk, posedge rst) 
+if (rst) 
+q <= value; 
+else 
+q <= d; 
+wire clk, rst, d; 
+reg q = 1'b1; 
+always @(posedge clk, posedge rst) 
+if (rst) 
+q <= 1'b0; 
+else 
+q <= d; 
+<<<page 75>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   68 
+2024.04 
+5.4 模块调用 
+5.4.1 HDL门级原语调用 
+TD 支持Verilog HDL 中的基本组合逻辑门。 
+表 5-1基本组合逻辑门 
+buf and or xor bufif1 
+not nand nor xnor bufif0 
+ 
+TD 不支持管极原语。 
+表 5-2 不支持的管极原语 
+cmos rcmos tran rtran 
+pmos rpmos tranif1 rtranfi1 
+nmos rnmos tranif0 rtranif0 
+ 
+5.4.2 TD原语调用 
+5.4.2.1 IP Catalog 
+IP Catalog 是TD 创建IP 核的图形交互设计界面。 用户可以在IP 生成器中对所选IP 进行配置,
+并自动生成相应的IP 模块。IP Cawtalog 包括三个视图，分别是： 
+wire a, b, c, o; 
+and u_and(o, a, b, c); 
+wire a, b; 
+tran u_tran(a, b); 
+<<<page 76>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   69 
+2024.04 
+ 
+图 5-4 IP Catalog 主界面视图 
+• “IP_Core“：按照 IP 功能进行分类显示，目前支持的 IP 模块分为 Primitive IP 和 Soft 
+IP,Primitive IP 有Common、Clock、Arithmetic、Memory、Analog Digital Convertor等;Soft IP 有
+Memory 等。不同器件支持的IP 种类数量并不相同，部分器件IP 正在添加中。 
+• “Details“：提供IP 名字、版本、接口、描述等介绍。 
+• “Compatible Devices“：提供所选IP 适配的所有器件。 
+工程中生成IP 模块的具体操作方式如下： 
+1. 创建 IP 模块 
+选择Tools IP Catalog 打开 IP 创建页面； 
+
+<<<page 77>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   70 
+2024.04 
+ 
+图 5-5 IP 核显示 
+在界面中可以选择所需的IP 双击进行创建，或右键选择“Customize IP”进行创建； 
+ 
+图 5-6 IP 创建显示 
+选择存储路径、输入IP 模块名称； 
+ 
+图 5-7 IP 创建选项 
+
+<<<page 78>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   71 
+2024.04 
+此处以PLL 为例，在IP 对话框中可根据工程需要和器件类型进行参数配置； 
+ 
+图 5-8 IP 参数配置界面 
+参数配置完成后，即可生成如下文件； 
+ 
+图 5-9 IP 创建成功界面 
+点击 “OK”，并选择是否添加文件至工程，勾选.v/.vhd 文件中的任意一个即会自动隐藏另一个文
+件，取消勾选则会重新显示两个文件； 
+
+<<<page 79>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   72 
+2024.04 
+ 
+ 
+图 5-10 IP 语言选择界面 
+添加至工程后，IP 显示如下，可在AnlogicIP 处右键选择Switch Source To更改添加至工程的文
+件为 Verilog/VHDL。 
+ 
+图 5-11 source 语言调整界面 
+ 
+
+<<<page 80>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   73 
+2024.04 
+2. 例化 IP 模块 
+以新建工程为例介绍例化PLL 模块的过程。用户在已有工程的基础上例化，过程基本一致。  
+(1).新建工程，并为工程添加顶层模块; 
+ 
+图 5-12 新建工程显示界面 
+(2).在工程中添加上一步生成的 test_ip_mode.v; 
+ 
+图 5-13 IP 模块显示 
+(3).在顶层模块中调用test_ip_mode 模块,并修改inst 名称和端口名称,点击保存按钮,即完成了
+PLL 模块的例化。点击File → Save 或（Ctrl+S）保存文件。 
+
+<<<page 81>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   74 
+2024.04 
+ 
+图 5-14 IP 模块例化显示 
+5.4.2.2 APM 
+APM（Anlogic Parameterized Macro）是一系列预先订制的IP。用户可以参考Language Template
+直接在工程设计中调用。 
+APM 主要包含在Language Template 界面下的 “verilog“和”vhdl“目录下。APM 目前包含 “APM_MEMORY”
+和“APM_SHIFTER”两类： 
+• “APM_MEMORY”：该目录主要包括分布式RAM，单双口RAM 等功能的例化。 
+• “APM_SHIFTER”：该目录主要包括静、动态移位寄存器两类。 
+ 
+图 5-15 Language Template 界面显示 
+
+<<<page 82>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   75 
+2024.04 
+APM 的具体添加方式如下： 
+1. 选择SourceLanguage Template 打开原语显示界面； 
+2. 以静态移位寄存器为例，用户可根据工程器件类型和所需功能进行逐级目录查找，也可使用界
+面视图中的搜索框进行筛选、搜索所需要的APM。 
+ 
+图 5-16 APM 功能显示 
+ 
+ 
+图 5-17 APM 筛选功能显示 
+
+<<<page 83>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   76 
+2024.04 
+3. 完成所需APM 筛选后，即可复制到工程中进行使用。 
+ 
+图 5-18 APM 工程使用显示 
+5.4.2.3 TD Primitive 
+TD 为每种器件支持一系列底层原语调用。用户可以参考Language Template 直接在工程设计中调
+用。 
+Language Template 是创建原语的图形交互设计界面。界面中显示的原语总体分为以下三类： 
+• “Timing Constraints ” ：该目录主要包括时钟建立、保持，分频，IO 等方面的时序约束命令。 
+• “verilog” ： 该目录为采用verilog 语言描述的底层原语， 包括APM 和 Device Primitive 两类，
+Device Primitive 以器件类型进行不同功能原语的分类。 
+• “vhdl” ： 该目录为采用vhdl 语言描述的底层原语， 包括APM 和Device Primitive 两类，Device 
+Primitive 以器件类型进行不同功能原语的分类。 
+ 
+图 5-19 原语界面显示 
+
+<<<page 84>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   77 
+2024.04 
+工程中底层原语的添加方式与APM 基本一致，操作如下： 
+1. 选择SourceLanguage Template 打开原语显示界面； 
+2. 以 PH2 TVS 为例，用户可根据工程器件类型和所需功能进行逐级目录查找，也可使用界面视图
+中的搜索框进行筛选、搜索所需要的底层原语。 
+ 
+图 5-20 原语功能显示 
+ 
+ 
+图 5-21 原语筛选功能显示 
+3. 完成所需原语筛选后，即可复制到工程中进行使用。 
+
+<<<page 85>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   78 
+2024.04 
+ 
+图 5-22 原语模块显示 
+5.5 Shift register 
+5.5.1 Static 
+ 单位宽，文件名：shifter_static_0.v 
+ 
+ 32bit 位宽静态移位寄存器1，文件名：shifter_static_1.v 
+ 
+ 32bit 位宽静态移位寄存器2，文件名：shifter_static_2.v 
+parameter DEPTH = 32; 
+reg [DEPTH-1:0] shift_reg;  
+always @(posedge clk) 
+ if (enable) 
+  shift_reg <= {shift_reg[DEPTH-2:0], d}; 
+assign q = shift_reg [DEPTH-1]; 
+parameter DEPTH = 32; 
+parameter WIDTH = 3; 
+reg [DEPTH*WIDTH-1:0] shift_reg; 
+always @(posedge clk) 
+ if (enable) 
+  shift_reg <= {shift_reg [(DEPTH-1)*WIDTH-1:0], d[WIDTH-1:0]}; 
+assign q = shift_reg[DEPTH*WIDTH-1:(DEPTH-1)*WIDTH]; 
+<<<page 86>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   79 
+2024.04 
+ 
+5.5.2 Dynamic 
+ 动态移位寄存器，文件名：shifter_dynamic.v 
+ 
+  
+parameter DEPTH = 32; 
+parameter WIDTH = 3; 
+reg [WIDTH-1:0] shift_reg [DEPTH-1:0]; 
+integer i; 
+always @(posedge clk) begin 
+   for (i=1; i<DEPTH; i=i+1) 
+        if (enable) 
+            shift_reg[i] <= shift_reg[i-1]; 
+if (enable) 
+shift_reg[0] <= d; 
+end 
+assign q = shift_reg[DEPTH-1]; 
+reg [WIDTH-1:0] shift_reg[DEPTH-1:0]; 
+integer i; 
+always @(posedge CLK) begin 
+for (i=1; i<DEPTH; i=i+1)  
+    if (CE)  
+       shift_reg[i] <= shift_reg[i-1]; 
+   if (CE) begin 
+     shift_reg[0] <= D; 
+     Q <= shift_reg[SEL]; 
+   end 
+end 
+<<<page 87>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   80 
+2024.04 
+5.6 Memory 
+5.6.1 DRAM  
+PH2A 器件的DRAM 用的是SLICE 中的LUT 资源，每个DRAM 原语会占用2～8 个6 输入LUT。 
+表 5-3 DRAM 不同模式配置 
+ROM 
+6 输入 LUT Size 
+2 32x4 64x2 128x1 - 
+4 32x8 64x4 128x2 256x1 
+SP 
+6 输入 LUT Size 
+2 32x4 64x2 
+4 32x8 64x4 
+SDP 
+6 输入 LUT Write Read 
+2 32x2 64x1 32x2 64x1 - 
+4 32x6 64x3 32x6 64x3 - 
+4 32x4 64x2 32x4 64x2 128x1 
+Full SDP 6 输入 LUT Write Read 8 64x8 128x4 256x2 32x16 64x8 128x4 256x2 
+ 
+  
+<<<page 88>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   81 
+2024.04 
+5.6.2 ERAM 
+PH2A 器件的ERAM 20K 支持单口、简单双口、真双口共3 种模式。 
+每种模式都支持不同的 地址深度 x 位宽 的 size。其中 512X40 或 512x32 的宽 size 只有 SDP 才
+有。8Kx2 和 16Kx1 和512x32 的 size 只能用到其中的16K 容量。 
+表 5-4 ERAM 不同模式配置 
+SP 20K 
+Port A 
+512x40 
+1Kx20 
+2Kx10 
+4Kx5 
+Port A 8Kx2 16Kx1 
+SDP 20K 
+Port B Port B - - 
+512x40 1Kx20 - - 8Kx2 16Kx1 - - 
+Port A 
+512x40 1:1 2:1 4:1 8:1 16:1 32:1 512x32 
+Port A 
+1Kx20 1:2 1:1 2:1 4:1 8:1 16:1 1Kx16 
+2Kx10 1:4 1:2 1:1 2:1 4:1 8:1 2Kx8 
+4Kx5 1:8 1:4 1:2 1:1 2:1 4:1 4Kx4 
+Port A 8Kx2 1:16 1:8 1:4 1:2 1:1 2:1 8Kx2 16Kx1 1:32 1:16 1:8 1:4 1:2 1:1 16Kx1 
+- - 512x32 1Kx16 2Kx8 4Kx4 8Kx2 16Kx1 
+SDP 16K 
+- - Port B 
+TDP 20K 
+Port B Port B - - 
+1Kx20 2Kx10 - - 16Kx1 - - 
+Port A 
+1Kx20 1:1 2:1 4:1 8:1 16:1 1Kx16 
+Port A 
+2Kx10 1:2 1:1 2:1 4:1 8:1 2Kx8 
+4Kx5 1:4 1:2 1:1 2:1 4:1 4Kx4 
+Port A 8Kx2 1:8 1:4 1:2 1:1 2:1 8Kx2 16Kx1 1:16 1:8 1:4 1:2 1:1 16Kx1 
+- - 1Kx16 2Kx8 4Kx4 8Kx2 16Kx1 
+TDP 16K 
+- - Port B 
+ 
+  
+<<<page 89>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   82 
+2024.04 
+5.6.3 URAM 
+PH2A 器件的URAM 144K 支持模式为TDP（兼容SP，SDP） ， 支持NORMAL 写模式， 支持size 为2Kx72。 
+5.6.4 ROM 
+ case 语句赋值，下述代码写法需要打开infer_rom 选项，文件名：rom_case.v 
+ 
+ 初始化文件赋值，文件名：rom_initfile.v 
+ 
+ 直接赋值，文件名：rom_assign.v 
+ 
+  
+always @(posedge clk) 
+    case (addr) 
+     0  : dout <= 8'b11000010; 
+     1  : dout <= 8'b10111001; 
+     /* ... */ 
+     254: dout <= 8'b11111101; 
+     255: dout <= 8'b10000110; 
+  default:dout <= 8'b00000000 
+    endcase 
+reg [7:0] mem[255:0]; 
+initial 
+    $readmemb("rom_initfile.txt", mem); 
+always @(posedge clk) 
+    dout <= mem[addr]; 
+reg [7:0] mem [255:0]; 
+initial begin 
+mem[0] = 8'b01010101; 
+   mem[1] = 8'b01010100; 
+   /* … */ 
+   mem[253] = 8'b01110101; 
+   mem[254] = 8'b11110100; 
+   mem[255] = 8'b01010101; 
+end 
+always @(posedge clk) 
+  dout <= mem[addr]; 
+<<<page 90>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   83 
+2024.04 
+5.6.5 RAM端口类型 
+5.6.5.1 SP 
+RAM 的SP 模式：用同一组地址进行读写。 
+ 文件名：ram_sp.v 
+ 
+5.6.5.2 SDP 
+RAM 的SDP 模式：用一组地址只写，另一组地址只读。 
+ 文件名：ram_sdp.v 
+ 
+5.6.5.3 TDP 
+RAM 的TDP 模式：用两组地址在各自的时钟下分别读写。 
+ 文件名：ram_tdp.v 
+reg [7:0] mem [255:0]; 
+always @(posedge clk) begin 
+    dout <= mem[addr]; 
+    if (we) 
+        mem[addr] <= din; 
+end 
+reg [7:0] mem[255:0]; 
+always @(posedge rclk) 
+    dout <= mem[raddr]; 
+always @(posedge wclk) 
+    if (we) 
+        mem[waddr] <= din; 
+<<<page 91>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   84 
+2024.04 
+ 
+5.6.6 RAM初始值 
+RAM 的初始化方式和DFF、ROM 相同， 可以在initial 块中用赋值语句设初始值，也可以用$readmemb、
+$readmemh 函数批量初始化。 
+ 文件名：ram_init.v 
+ 
+ 文件名：ram_readmem.v 
+ 
+5.6.7 RAM同步读与异步读 
+RAM 读逻辑的同步既可以在读数据中同步采样，也可以对读地址同步采样。 
+ RAM 的同步读，文件名：ram_sync_read.v 
+ 
+ RAM 的同步地址读，文件名：ram_sync_addr.v 
+reg [7:0] mem [255:0]; 
+always @(posedge clka) begin 
+    doa <= mem[addra]; 
+    if (wea) 
+        mem[addra] <= dia; 
+end 
+always @(posedge clkb) begin 
+    dob <= mem[addrb]; 
+    if (web) 
+        mem[addrb] <= dib; 
+end 
+reg [7:0] mem[255:0]; 
+initial 
+    mem[0] = 8'hFF; 
+reg [7:0] mem[255:0]; 
+initial 
+    $readmemb("ram_readmem.txt", mem); 
+always @(posedge clk) begin 
+    dout <= mem[addr]; 
+end 
+<<<page 92>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   85 
+2024.04 
+ 
+ RAM 也可以在时钟下降沿同步采样，文件名：ram_sync_inv.v 
+ 
+ 异步读操作是指：既不对读地址同步采样，又不在读操作中同步采样，文件名：ram_async.v 
+ 
+5.6.8 RAM Out-reg 
+在 RAM 输出后再用时钟多打一拍对时序有利。IP Catalog 中生成 RAM IP 时默认多打一拍进行输
+出，创建RAM 时推荐使用该默认配置。 
+5.6.9 RAM读写顺序 
+ RAM 的先读后写（read before write） ，文件名：ram_read_write.v 
+ 
+ RAM 的先写后读（write before read，write through），文件名：ram_write_through.v 
+ 
+ RAM 的写时不读（normal, no change），文件名：ram_normal.v 
+reg [7:0] addr_sync; 
+always @(posedge clk) 
+    addr_sync <= addr; 
+always @(*) 
+    dout <= mem[addr_sync]; 
+always @(negedge clk) begin 
+    dout <= mem[addr]; 
+end 
+always @(*) 
+    dout <= mem[addr]; 
+always @(posedge clk) begin 
+    dout <= mem[addr]; 
+    if (we) 
+        mem[addr] <= din; 
+end 
+always @(posedge clk) 
+    if (we) begin 
+        mem[addr] <= din; 
+        dout <= din; 
+    end else 
+        dout <= mem[addr]; 
+<<<page 93>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   86 
+2024.04 
+ 
+5.6.10 RAM使能 
+ RAM 可以一直保持使能读写，文件名：ram_en_always.v 
+ 
+ 常用设计中，一般RAM 的写操作都需要有一个使能信号控制，文件名：ram_en.v 
+ 
+ RAM 也可以同步添加读写使能逻辑，文件名：ram_re_we.v 
+ 
+ 使用RAM 进行读写操作时， 可以创建同时控制读写操作的使能信号，该使能信号能够控制读写
+操作同时读写或同时不起作用，文件名：ram_en.v 
+ 
+always @(posedge clk) 
+    if (we) 
+        mem[addr] <= din; 
+    else 
+        dout <= mem[addr]; 
+always @(posedge clk) begin 
+    dout <= mem[addr]; 
+    mem[addr] <= din; 
+end 
+always @(posedge clk) begin 
+    dout <= mem[addr]; 
+    if (we) 
+        mem[addr] <= din; 
+end 
+always @(posedge clk) begin 
+    if (re) 
+        dout <= mem[raddr]; 
+    if (we) 
+        mem[waddr] <= din; 
+end 
+always @(posedge clk) begin 
+    if (en) begin 
+        dout <= mem[addr]; 
+        mem[addr] <= din; 
+    end 
+end 
+<<<page 94>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   87 
+2024.04 
+最常见的写法是既有读使能，又有写使能，但是在实际应用中会存在先后顺序或冲突情况。 
+ RAM 的先读后写，文件名：ram_en_we.v 
+ 
+ RAM 的先写后读，文件名：ram_en_write_through.v 
+ 
+ RAM 的写时不读，文件名：ram_en_normal.v 
+ 
+5.6.11 RAM复位 
+复位值可以为任意常数值。 
+ 无 OUTREG 时，文件名：ram_rst_noreg.v 
+ 
+有OUTREG 时，rst 需要与ram 读口的rst 相同，RESET_VALUE 也需要一致，en 信号可以不一致。 
+always @(posedge clk) 
+    if (en) begin 
+        dout <= mem[addr]; 
+        if (we) 
+            mem[addr] <= din; 
+    end 
+always @(posedge clk) 
+    if (en) 
+        if (we) begin 
+            mem[addr] <= din; 
+            dout <= din; 
+        end else 
+            dout <= mem[addr]; 
+always @(posedge clk) 
+    if (en) 
+        if (we) 
+            mem[addr] <= din; 
+  else 
+   dout <= mem[addr]; 
+always@(posedge clk) begin 
+  if (rst) 
+   dout <= RESET_VALUE; 
+  else if (re) 
+    dout <= mem[addr]; 
+end 
+<<<page 95>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   88 
+2024.04 
+ 文件名：ram_rst_outreg.v 
+ 
+5.6.12 RAM BYTE 
+ RAM 按8/9/10 位宽被切分成读写完全独立的几个部分，文件名：ram_byte.v 
+ 
+5.6.13 RAM选型 
+5.6.13.1 综合成 ERAM 
+若用户期望工程代码中的Memory 能够综合成ERAM 时，需要满足如下所示条件： 
+条件一：同步读，包含读操作同步或者读地址同步采样两种方式； 
+见上文：RAM 同步读与异步读 
+条件二：写端口数量不允许超过2； 
+reg [7:0] dout_reg; 
+always@(posedge clk) begin 
+  if (rst) 
+    dout_reg <= RESET_VALUE; 
+  else if (re) 
+    dout_reg <= mem[addr]; 
+end 
+ 
+always@(posedge clk) begin 
+  if (rst) 
+   dout <= RESET_VALUE; 
+  else if (oce) 
+    dout <= dout_reg; 
+end 
+always@(posedge clk) begin 
+  if(we) begin 
+    if(be[0]) 
+      mem[addr][7:0] <= din[7:0]; 
+    if(be[1]) 
+      mem[addr][15:8] <= din[15:8]; 
+  end  
+  dout <= mem[addr]; 
+end 
+<<<page 96>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   89 
+2024.04 
+ 
+条件三：在一个写口的场景，ram 的深度要不小于64，在指定（* ram_style=”bram” *）时，软
+件不再限制。 
+具体方法见TD 综合指令章节。 
+5.6.13.2 综合成 DRAM 
+若用户期望工程代码中的Memory 能够综合成DRAM 时，需要满足如下所示条件： 
+条件：写口数量不允许超过1。 
+5.6.13.3 综合成 URAM 
+若用户期望工程代码中的Memory 能够综合成URAM 时，需要满足如下所示条件： 
+条件一：指定 (*ram_style = “bram_144k”*)； 
+条件二：没有初始值； 
+条件三：复位值只支持全0； 
+条件四：双口时，时钟相同； 
+条件五：双口时，必须有OUTREG； 
+条件六：双口时，只支持NORMAL 模式； 
+条件七：单口且模式为WRITETHROUGH 时，必须有OUTREG。 
+5.6.13.4 综合成 SLICE 
+若用户期望工程代码中的Memory 使用SLICE 来实现，需要满足如下所示条件： 
+场景一：不满足上面ERAM，DRAM，URAM 的条件，会综合成SLICE； 
+场景二：指定ram_style=”none”； 
+场景三：多写口时，如果有不同的clk，会报告CRITICAL WARNING，综合结果可能与源码在某些场
+景仿真不等价。 
+always@(posedge clk) begin 
+    if (we1) mem[waddr1] <= din1; 
+    if (we2) mem[waddr2] <= din2; 
+    if (we3) mem[waddr3] <= din3; 
+    dout <= mem[raddr]; 
+end 
+<<<page 97>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   90 
+2024.04 
+具体方法见TD 综合指令章节。 
+5.7 算术乘（加） 
+5.7.1 特殊器件注意事项 
+PH2A 器件 DSP 支持 27x18 以下有符号数或者 26x17 以下的无符号数乘法。有符号数补符号位，无
+符号数补0。 
+5.7.2 乘法器 
+小的乘法操作会用SLICE 资源实现， 大的乘法操作会用DSP 中的乘法单元实现。 可以采用软件自动
+策略，用户也可以加综合指令进行指定。 
+ 综合指令可以设置在module 上，控制整个module 内部的乘法操作是否用DSP 实现。文件名：
+dsp_style_module.v 
+ 
+ 综合指令也可以设置在wire(寄存器)上。文件名：dsp_style_wire.v 
+ 
+5.7.3 乘 
+ 基于TD 的乘法运算通常采用乘法操作符*。文件名：mult.v 
+ 
+5.7.4 乘加 
+ 乘加操作，文件名：mult_add.v 
+ 
+5.7.5 加乘 
+ 加乘操作，文件名：add_mult.v 
+module top (a, b, c)/*synthesis dsp_style = yes*/; 
+wire [17:0] product/*synthesis dsp_style = yes*/; 
+assign product = a * b; 
+assign product = a * b; 
+assign product[17:0] = a[8:0] * b[8:0]; 
+assign sum[17:0] = product[17:0] + c[17:0]; 
+<<<page 98>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   91 
+2024.04 
+ 
+5.7.6 加乘加 
+ 加乘加操作，文件名：add_mult_add.v 
+ 
+5.7.7 DSP内部寄存器 
+针对 PH1A、PH2A 的 DSP，其内部存在 5 级寄存器，即，从数据输入到输出总共有5 拍，用户可根
+据功能和时序要求平衡寄存器的使用情况。推荐用户打开输入输出寄存器。 
+文件名：dsp_pipe.v 
+assign sum[10:0] = a[9:0] + b[9:0]; 
+assign product[21:0] = sum[10:0] * c[10:0]; 
+assign presum[10:0] = a[9:0] + b[9:0]; 
+assign product[21:0] = presum[10:0] * c[10:0]; 
+assign tsum[22:0] = product[21:0] + d[21:0]; 
+<<<page 99>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   92 
+2024.04 
+ 
+input clk, ce, rst; 
+reg [9:0] a_reg1, b_reg1,a_reg2,b_reg2; 
+reg [10:0] c_reg1, c_reg2, presum_reg; 
+reg [21:0] d_reg; 
+wire [10:0] presume; 
+wire [21:0] product; 
+reg  [21:0] product_reg; 
+wire [22:0] tsum; 
+reg [22:0] tsum_reg; 
+always@(posedge clk) begin 
+  if (rst) begin 
+   a_reg1 <= 0; 
+    b_reg1 <= 0; 
+    c_reg1 <= 0; 
+    a_reg2 <= 0; 
+    b_reg2 <= 0; 
+    c_reg2 <= 0; 
+    d_reg <= 0; 
+  end else if (ce) begin 
+    a_reg1 <= a; 
+    b_reg1 <= b; 
+    c_reg1 <= c; 
+    a_reg2 <= a_reg1; 
+    b_reg2 <= b_reg1; 
+    c_reg2 <= c_reg1; 
+    d_reg <= d; 
+  end 
+end assign presum[10:0] = a_reg2[9:0] + b_reg2[9:0]; 
+always@(posedge clk) begin 
+  if (rst) begin 
+   presum_reg <= 0; 
+  end else if (ce) begin 
+    presum_reg <= presum; 
+  end 
+end 
+assign product[21:0] = presum_reg[10:0] * c_reg2[10:0]; 
+always@(posedge clk) begin 
+  if (rst) begin 
+    product_reg <= 0; 
+  end else if (ce) begin 
+    product_reg <= product; 
+  end 
+end 
+assign tsum[22:0] = product_reg[21:0] + d[21:0]; 
+always@(posedge clk) begin 
+  if (rst) begin 
+    tsum_reg <= 0; 
+  end else if (ce) begin 
+    tsum_reg <= tsum; 
+  end 
+end 
+ 
+<<<page 100>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   93 
+2024.04 
+5.7.8 DSP内部寄存器类型 
+DSP 内部寄存器可选择4 种不用的enable 信号以及4 种不同的同步或者异步reset 信号。 
+ 文件名：dsp_pipe_type.v 
+ 
+input clk; 
+input [3:0] ce; 
+input [4:0] rst; 
+reg [9:0] a_reg1, b_reg1, a_reg2, b_reg2; 
+reg [10:0] c_reg1, c_reg2, presum_reg; 
+reg [21:0] d_reg, product_reg; 
+wire [10:0] presum; 
+wire [21:0] product; 
+wire [22:0] tsum; 
+reg [22:0] tsum_reg; 
+always@(posedge clk) begin 
+  if (rst[0]) begin 
+    a_reg1 <= 0; 
+    b_reg1 <= 0; 
+    c_reg1 <= 0; 
+    a_reg2 <= 0; 
+    b_reg2 <= 0; 
+    c_reg2 <= 0; 
+    d_reg <= 0; 
+  end else if (ce[0]) begin 
+    a_reg1 <= a; 
+    b_reg1 <= b; 
+    c_reg1 <= c; 
+    a_reg2 <= a_reg1; 
+    b_reg2 <= b_reg1; 
+    c_reg2 <= c_reg1; 
+    d_reg <= d; 
+  end 
+end 
+assign presum[10:0] = a_reg2[9:0] + b_reg2[9:0]; 
+always@(posedge clk) begin 
+  if (rst[1]) begin 
+    presum_reg <= 0; 
+  end else if (ce[1]) begin 
+    presum_reg <= presum; 
+  end 
+end 
+assign product[21:0] = presum_reg[10:0] * c_reg2[10:0]; 
+always@(posedge clk) begin 
+  if (rst[2]) begin 
+    product_reg <= 0; 
+  end else if (ce[2]) begin 
+    product_reg <= product; 
+  end 
+end 
+assign tsum[22:0] = product_reg[21:0] + d[21:0]; 
+always@(posedge clk) begin 
+  if (rst[3]) begin 
+    tsum_reg <= 0; 
+  end else if (ce[3]) begin 
+    tsum_reg <= tsum; 
+  end 
+end 
+<<<page 101>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   94 
+2024.04 
+5.8 算术加减比较 
+5.8.1 特殊器件注意事项 
+PH2A 器件中的SLICE 有进位链模块，每个SLICE 中有4 个6 输入LUT 和一个4 bits 进位链，它
+们配合在一起可以实现4 bits 加法/减法。SLICE 和SLICE 中间有进位链的硬级联线实现快速进位。 
+5.8.2 加法器 
+TD 软件会把短的加减法操作用SLICE 的 LUT 来实现，长的用 SLICE 的进位链资源来实现。可以人
+为加synthesis directive 指定。例如：使用进位链时，可以添加/*synthesis use_ripple = 1 */指
+令。具体方法见TD 综合指令章节。 
+ 
+5.8.3 比较器 
+与加法器相似，TD 软件会把短的比较操作用SLICE 的 LUT 来实现，长的用 SLICE 的进位链资源来
+实现。 可以人为加synthesis directive指定。例如： 使用LUT 实现时， 可以添加/*synthesis use_ripple 
+= 0 */指令。具体方法见TD 综合指令章节。 
+ 
+5.9 计数器 
+计数器种类众多，大致可分为二进制计数器、格雷码计数器、移位寄存器类计数器。 
+ 二进制计数器，文件名：binary_counter.v 
+ 
+ 格雷码计数器，文件名：gray_counter.v 
+wire [31:0] a, b; 
+assign sum = a + b; 
+wire [31:0] a, b; 
+assign cmp = a < b; 
+wire clk, rst; 
+reg [3:0] counter; 
+always @(posedge clk) begin 
+ if (rst) 
+  counter <= 4'd0; 
+ else  
+counter <= counter + 1'b1; 
+end 
+<<<page 102>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   95 
+2024.04 
+ 
+ 环形移位计数器，文件名：ring_counter.v 
+ 
+ 扭环形移位计数器，文件名：torsional_ring_counter.v 
+ 
+5.10 读写寄存器 
+读写寄存器模块是常见的应用。 读写寄存器通常有一组读写端口， 然后把需要读写的寄存器也声明
+在模块里， 寄存器值作为输出给其它模块使用， 其它模块的读入信号也可以作为输入给寄存器模块使用。 
+同一个信号如果同时支持读写， 其读写地址建议相同。 读写操作可以用1 个信号进行切换， 也可以
+wire clk, rst; 
+reg [3:0] counter_bin; 
+wire[3:0] counter_gray; 
+always @(posedge clk) begin 
+if (rst) 
+     counter_bin <= 4'd0; 
+else  
+counter_bin <= counter_bin + 1'b1; 
+end 
+assign counter_gray = (counter_bin >> 1) ^ counter_bin; 
+wire clk, rst; 
+reg [3:0] cir_r; 
+wire[3:0] cir; 
+always @(posedge clk) begin 
+ if (rst) 
+  cir_r <= 4'b0001; 
+ else  
+cir_r <= {cir_r[0], cir_r[3:1]}; 
+end 
+assign cir = cir_r; 
+wire clk, rst; 
+reg [3:0] ting_r; 
+wire[3:0] ting; 
+always @(posedge clk) begin 
+ if (rst) 
+  ting_r <= 4'b0001; 
+ else  
+ting_r <= {~ting_r[0], ting_r[3:1]}; 
+end 
+assign ting = ting_r; 
+<<<page 103>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   96 
+2024.04 
+用 2 个信号分别使能。 
+ 
+ 
+module read_write_registers ( 
+     input      [15:0] input_2, 
+     input      [15:0] input_3, 
+     output reg [15:0] reg_4 = 16'h0, 
+     output reg [15:0] reg_5 = 16'h0, 
+     output reg [15:0] reg_6 = 16'h0, 
+     output reg [15:0] reg_7 = 16'h0, 
+     output reg [15:0] dout = 16'h0, 
+     input [15:0] din, 
+     input [15:0] addr, 
+     input r1w0, 
+     input enable, 
+     input rst, 
+     input clk 
+); 
+wire [15:0] CONST_0 = 16'hDEAD; 
+wire [15:0] CONST_1 = 16'hBEEF; 
+always @(posedge clk) 
+     if (rst) 
+         dout <= 16'b0; 
+     else if (enable) 
+         if (r1w0)  // read 
+             case (addr) 
+                 16'd0: dout <= CONST_0; 
+                 16'd1: dout <= CONST_1; 
+                 16'd2: dout <= input_2; 
+                 16'd3: dout <= input_3; 
+                 16'd4: dout <= reg_4; 
+                 16'd5: dout <= reg_5; 
+     default:dout <= 16'b0; 
+             endcase 
+         else  // write 
+             case (addr) 
+                 16'd4: reg_4 <= din; 
+                 16'd5: reg_5 <= din; 
+                 16'd6: reg_6 <= din; 
+                 16'd7: reg_7 <= din; 
+             endcase 
+endmodule 
+<<<page 104>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   97 
+2024.04 
+5.11 FSM 有限状态机 
+如果一个系统包含有限数字的状态和状态转换动作， 便可以使用 “有限状态机 “来描述该系统。通
+常有限状态机在特定条件下实现状态的迁移功能，而 HDL 则是使用条件分支语句来实现有限状态机特
+定条件的描述，例如if/else 语句或case/endcase 语句。 
+不同状态机按照输出变量依从关系的不同， 可以分为米利 （Mealy） 状态机和摩尔 （Moore） 状态机。 
+5.11.1 米利（Mealy）状态机 
+米利（Mealy）状态机的结构如下图所示。 
+Next state State register Output comb logic
+Input
+CLK
+Output
+ 
+图 5-23 米利状态机 
+由图可见，米利（Mealy）状态机由下一状态，状态寄存器和输出组合逻辑模块构成，其中输出组
+合逻辑模块的“输出“内容取决于当前状态和当前输入的数据。 
+5.11.2 摩尔（Moore）状态机 
+摩尔（Moore）状态机的结构如下图所示。 
+Next state State register Output comb logic
+Input
+CLK
+Output
+ 
+图 5-24 摩尔状态机 
+由图可见，摩尔（Moore）状态机结构组成和米利（Mealy）状态机一致，包含下一状态，状态寄存
+器和输出组合逻辑模块，区别在于输出组合逻辑的“输出“内容仅取决于当前状态。 
+5.11.3 有限状态机推荐代码风格 
+ 一段式摩尔，文件名：one_stage_moore.v 
+<<<page 105>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   98 
+2024.04 
+ 
+ 二段式摩尔，文件名：two_stage_moore.v 
+reg state = STATE_IDLE; 
+always @(posedge clk, posedge rst) begin 
+  if(rst) begin 
+   state <= STATE_IDLE; 
+  end 
+  else begin 
+   case(state) 
+      STATE_IDLE: begin 
+        if (cd) begin 
+         state <= STATE_STOP; 
+        end else begin 
+           state <= STATE_IDLE; 
+        end 
+        out <= 1'b0; 
+      end 
+      STATE_STOP: begin 
+  …… …… 
+      end 
+      default:  
+        state <= STATE_IDLE; 
+    endcase 
+  end 
+end 
+<<<page 106>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   99 
+2024.04 
+ 
+ 三段式摩尔，文件名：three_stage_moore.v 
+// first stage : state transition 
+reg state = STATE_IDLE; 
+reg state_next; 
+always @(posedge clk, posedge rst) begin 
+  if(rst) begin 
+   state <= STATE_IDLE; 
+  end else begin 
+    state <= state_next; 
+  end 
+end 
+// second stage : state update and output 
+always @(cd, state) begin 
+    case(state) 
+      STATE_IDLE: begin 
+        if (cd) begin 
+         state_next <= STATE_STOP; 
+        end else begin 
+           state_next <= STATE_IDLE; 
+        end 
+        out <= 1'b0; 
+      end 
+      STATE_STOP: begin 
+        …… ……  
+      end 
+      default:  
+        state_next <= STATE_IDLE; 
+    endcase 
+end 
+<<<page 107>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   100 
+2024.04 
+ 
+// first stage : state transition 
+reg state = STATE_IDLE; 
+reg state_next; 
+always @(posedge clk, posedge rst) begin 
+  if(rst) begin 
+    state <= STATE_IDLE; 
+  end else begin 
+    state <= state_next; 
+  end 
+end 
+// second stage : state update 
+always @(cd, state) begin 
+    case(state) 
+      STATE_IDLE: begin 
+        if (cd) begin 
+          state_next <= STATE_STOP; 
+        end else begin 
+          state_next <= STATE_IDLE; 
+        end 
+      end 
+      STATE_STOP: begin 
+        if (cd) begin 
+          state_next <= STATE_IDLE; 
+        end else begin 
+          state_next <= STATE_STOP; 
+        end 
+      end 
+      default:  
+        state_next <= STATE_IDLE; 
+    endcase 
+end 
+// third stage : output  
+always @(posedge clk) begin 
+    case(state) 
+      STATE_IDLE: begin 
+        out <= 1'b0; 
+      end 
+      STATE_STOP: begin 
+        out <= 1'b1; 
+      end 
+    endcase 
+end 
+<<<page 108>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   101 
+2024.04 
+ 一段式米利，文件名：one_stage_mealy.v 
+ 
+ 二段式米利，文件名：two_stage_mealy.v 
+reg state = STATE_IDLE; 
+always @(posedge clk, posedge rst) begin 
+  if(rst) begin 
+    state <= STATE_IDLE; 
+  end 
+  else begin 
+    case(state) 
+      STATE_IDLE: begin 
+        if (cd) begin 
+          state <= STATE_STOP; 
+          out <= 1'b0; 
+        end 
+        else begin  
+          state <= STATE_IDLE; 
+          out <= 1'b1; 
+        end 
+      end 
+      STATE_STOP: begin 
+        …… …… 
+      end 
+      default:  
+        state <= STATE_IDLE; 
+    endcase 
+  end 
+end   
+<<<page 109>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   102 
+2024.04 
+ 
+ 三段式米利，文件名：three_stage_mealy.v 
+// first stage : state transition 
+reg state = STATE_IDLE; 
+reg state_next; 
+always @(posedge clk, posedge rst) begin 
+  if(rst) begin 
+    state <= STATE_IDLE; 
+  end else begin 
+    state <= state_next; 
+  end 
+end 
+// second stage : state update and output 
+always @(cd, state) begin 
+    case(state) 
+      STATE_IDLE: begin 
+        if (cd) begin 
+          state_next <= STATE_STOP; 
+          out <= 1'b0; 
+        end else begin 
+          state_next <= STATE_IDLE; 
+          out <= 1'b1; 
+        end 
+      end 
+      STATE_STOP: begin 
+        …… …… 
+      end 
+      default:  
+        state_next <= STATE_IDLE; 
+    endcase 
+end 
+<<<page 110>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   103 
+2024.04 
+ 
+// first stage : state transition 
+reg state = STATE_IDLE; 
+reg state_next; 
+always @(posedge clk, posedge rst) begin 
+  if(rst) begin 
+    state <= STATE_IDLE; 
+  end else begin 
+    state <= state_next; 
+  end 
+end 
+// second stage : state update 
+always @(cd, state) begin 
+    case(state) 
+      STATE_IDLE: begin 
+        if (cd) begin 
+          state_next <= STATE_STOP; 
+        end else begin 
+          state_next <= STATE_IDLE; 
+        end 
+      end 
+      STATE_STOP: begin 
+        …… …… 
+      end 
+      default:  
+        state_next <= STATE_IDLE; 
+    endcase 
+end 
+// three stage : output  
+always @(posedge clk) begin 
+    case(state) 
+      STATE_IDLE: begin 
+        if (cd) begin 
+          out <= 1'b0; 
+        end else begin 
+          out <= 1'b1; 
+        end 
+      end 
+      STATE_STOP: begin 
+        …… …… 
+      end 
+    endcase 
+end 
+<<<page 111>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   104 
+2024.04 
+ 如果输出是组合逻辑的话， 也可以不在always 块中对输出过程进行赋值， 而采用assign 语句
+赋值。文件名：ass_fsm.v 
+ 
+5.11.4 按编码方式分类 
+FSM 有限状态机除按照输入输出关系分类外， 还可以采用编码方式进行分类。最著名的是二进制编
+码，除此之外还有格雷编码和one-hot 编码。 
+5.11.4.1 二进制编码 
+顺序二进制编码，即将状态依次编码为顺序的二进制数。顺序二进制编码是最紧密的编码。 
+优点：在于它使用的状态向量位数最少。例如对于6 个状态的状态机，只需要 3 位二进制数来进
+行编码，因此只需要 3 个触发器来实现，节约了逻辑资源。 
+缺点：翻转次数较多，功耗大；易出现毛刺；状态跳转需要过多组合逻辑电路，电路复杂，不利于
+级数的优化。 
+ 文件名：binary_fsm.v 
+localparam STATE_IDLE=1'b0, STATE_STOP=1'b1;  
+reg state = STATE_IDLE; 
+always @(posedge clk) begin 
+  case(state) 
+    STATE_IDLE: begin 
+        state <= STATE_STOP; 
+    end 
+    STATE_STOP: begin 
+        state <= STATE_IDLE; 
+    end 
+    default:  
+      state <= STATE_IDLE; 
+  endcase 
+end 
+ 
+assign out = state ? d0 : d1; 
+<<<page 112>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   105 
+2024.04 
+   
+5.11.4.2 one-hot编码 
+One-Hot 编码， 又称为一位有效编码、 独热码，主要是采用N 位状态寄存器来对N 个状态进行编码，
+每个状态都由他独立的寄存器位，并且在任意状态时候只有一位有效。 
+优点： 译码简单，组合逻辑电路较少，电路可靠性较高； 状态跳转简单，译码速度和编码数量无直
+接关系，系统运行速度较快。 
+缺点：所消耗的寄存器是所有编码方式中最高的；采用独热编码会生成不可达到的多余状态。 
+ 文件名：onehot_fsm.v 
+localparam STATE_IDLE=2'b00, STATE_START=2'b01, STATE_STOP=2'b11; 
+reg [1:0] state = STATE_IDLE; 
+always @(posedge clk, posedge rst) begin 
+  if(rst) begin 
+    state <= STATE_IDLE; 
+  end 
+  else begin 
+    case(state) 
+      STATE_IDLE: begin 
+        state <= STATE_START; 
+        out <= 1'b0; 
+      end 
+      STATE_START: begin 
+        state <= STATE_STOP; 
+        out <= 1'b1; 
+      end 
+      STATE_STOP: begin 
+        state <= STATE_IDLE; 
+        out <= 1'b1; 
+      end 
+      default:  
+        state <= STATE_IDLE; 
+    endcase 
+  end 
+end 
+<<<page 113>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   106 
+2024.04 
+  
+同时，为了使用户更方便的转换状态机的编码方式，TD 中集成了“fsm_encoding”的综合指令，
+具体作用为： 标注于FSM 状态寄存器， 指导该FSM 使用何种编码方式， 如果被标注对象， 不是FSM 状态
+寄存器则没有对应行为。具体方法见TD 综合指令章节。 
+ 二进制转独热码，文件名：binary_to_onehot.v 
+ 
+localparam STATE_IDLE=3'b001, STATE_START=3'b010, STATE_STOP=3'b100; 
+reg [2:0] state = STATE_IDLE; 
+always @(posedge clk, posedge rst) begin 
+  if(rst) begin 
+    state <= STATE_IDLE; 
+  end 
+  else begin 
+    case(state) 
+      STATE_IDLE: begin 
+        state <= STATE_START; 
+        out <= 1'b0; 
+      end 
+      STATE_START: begin 
+        state <= STATE_STOP; 
+        out <= 1'b1; 
+      end 
+      STATE_STOP: begin 
+        state <= STATE_IDLE; 
+        out <= 1'b1; 
+      end 
+      default:  
+        state <= STATE_IDLE; 
+    endcase 
+  end 
+end 
+<<<page 114>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   107 
+2024.04 
+ 
+ 独热码转二进制编码，文件名：onehot_to_sequential.v 
+ 
+localparam STATE_IDLE=2'b00, STATE_START=2'b01, STATE_STOP=2'b11; 
+(*fsm_encoding = "one_hot"*)reg [1:0] state = STATE_IDLE; 
+always @(posedge clk, posedge rst) begin 
+  if(rst) begin 
+    state <= STATE_IDLE; 
+  end 
+  else begin 
+    case(state) 
+      STATE_IDLE: begin 
+        state <= STATE_START; 
+        out <= 1'b0; 
+      end 
+      STATE_START: begin 
+        state <= STATE_STOP; 
+        out <= 1'b1; 
+      end 
+      STATE_STOP: begin 
+        state <= STATE_IDLE; 
+        out <= 1'b1; 
+      end 
+      default:  
+        state <= STATE_IDLE; 
+    endcase 
+  end 
+end 
+<<<page 115>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   108 
+2024.04 
+ 
+5.12 计算最大值 
+要计算一组数据中的最大值，可以用for 循环来逐一对比。 
+ 文件名：cmp_max.v 
+ 
+这里用到了Verilog 的阻塞式赋值， 寄存器变量循环地参与比较、 选择更新。 在一个时钟周期里要
+localparam STATE_IDLE=3'b001, STATE_START=3'b010, STATE_STOP=3'b100; 
+(*fsm_encoding = "sequential"*)reg [2:0] state = STATE_IDLE; 
+always @(posedge clk, posedge rst) begin 
+  if(rst) begin 
+    state <= STATE_IDLE; 
+  end 
+  else begin 
+    case(state) 
+      STATE_IDLE: begin 
+        state <= STATE_START; 
+        out <= 1'b0; 
+      end 
+      STATE_START: begin 
+        state <= STATE_STOP; 
+        out <= 1'b1; 
+      end 
+      STATE_STOP: begin 
+        state <= STATE_IDLE; 
+        out <= 1'b1; 
+      end 
+      default:  
+       state <= STATE_IDLE; 
+    endcase 
+  end 
+end 
+always @(posedge clk) begin 
+    max_addr = 4'b0; 
+    max_data = 8'b0; 
+    for (i=0; i<16; i=i+1) 
+        if (data[i] > max_data) begin 
+            max_addr = i; 
+            max_data = data[i]; 
+        end 
+end 
+<<<page 116>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   109 
+2024.04 
+进行15 次比较和选择会带来时序压力。 如果分成2 个小组， 每个小组内7 次擂台赛， 加上1 次总决赛，
+一共仍然是15 次比较和选择，关键路径上就从15 次减少到8 次。 
+ 文件名：cmp_max_by8.v 
+ 
+更进一步可以设计成淘汰赛，仍然是15 次比较和选择，但关键路径减少到4 次。 
+ 文件名：cmp_max_tree.v 
+reg [3:0] max_addr07, max_addr8F; 
+reg [7:0] max_data07, max_data8F; 
+always @(posedge clk) begin 
+    max_addr07 = 0; 
+    max_data07 = 8'b0; 
+    for (i=0; i<8; i=i+1) 
+        if (data[i] > max_data07) begin 
+            max_addr07 = i; 
+            max_data07 = data[i]; 
+        end 
+    max_addr8F = 8; 
+    max_data8F = 8'b0; 
+    for (i=9; i<16; i=i+1) 
+        if (data[i] > max_data8F) begin 
+            max_addr8F = i; 
+            max_data8F = data[i]; 
+        end 
+    max_addr = max_data07 < max_data8F ? max_addr8F : max_addr07; 
+    max_data = max_data07 < max_data8F ? max_data8F : max_data07; 
+end 
+<<<page 117>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   110 
+2024.04 
+ 
+5.13 异步信号同步化 
+为降低系统中亚稳态发生的概率， 需要对异步信号进行同步化处理。该方法在信号数据宽度、频率
+不同的情况下，有着不同的处理方式。 
+ 两级 DFF 同步器：适用于快时钟域 切换到慢时钟域的单 bit 异步信号同步化 ，文件名 ： 
+synchronous_process_dff.v 
+ 
+reg [3:0] temp_addr [31:1]; 
+reg [7:0] temp_data [31:1]; 
+always @(posedge clk) begin 
+    for (i=31; i>=1; i=i-1) begin 
+        if (i >= 16) begin 
+            temp_addr[i] = i-16; 
+            temp_data[i] = data[i-16]; 
+        end else if (temp_data[i*2] < temp_data[i*2+1]) begin 
+            temp_addr[i] = temp_addr[i*2+1]; 
+            temp_data[i] = temp_data[i*2+1]; 
+        end else begin 
+            temp_addr[i] = temp_addr[i*2]; 
+            temp_data[i] = temp_data[i*2]; 
+        end 
+    end 
+    max_addr = temp_addr[1]; 
+    max_data = temp_data[1]; 
+end 
+wire clk,rst; 
+wire asy_in, syn_out; 
+reg asy_in_d; 
+reg asy_in_2d; 
+always@(posedge clk or posedge rst)begin 
+ if(rst)begin 
+  asy_in_d <= 1'b0; 
+  asy_in_2d <= 1'b0; 
+ end  
+ else begin 
+  asy_in_d <= asy_in; 
+  asy_in_2d <= asy_in_d; 
+ end 
+end 
+assign syn_out = asy_in_2d; 
+<<<page 118>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   111 
+2024.04 
+ 信号展宽后打拍方法：适用于快时钟域 切换到慢时钟域的单脉冲异步信号同步化 ，文件名：
+synchronous_process_broad.v 
+ 
+ 异步FIFO 方式：适用于多bit 异步信号同步化，文件名：synchronous_process_fifo.v 
+wire clk_a, clk_b; 
+wire rst; 
+wire pulse_a, pulse_b; 
+reg pulse_inv; 
+reg pulse_inv_d; 
+reg pulse_inv_2d;  
+reg pulse_inv_3d;     
+always@(posedge clk_a or posedge rst)begin 
+    if(rst) 
+        pulse_inv <= 1'b0; 
+    else if(pulse_a) 
+        pulse_inv <= ~pulse_inv; 
+end 
+always@(posedge clk_b or posedge rst) begin 
+    if(rst) begin 
+        pulse_inv_d <= 1'b0; 
+        pulse_inv_2d <= 1'b0; 
+        pulse_inv_3d <= 1'b0; 
+    end 
+    else begin 
+        pulse_inv_d <= pulse_inv; 
+        pulse_inv_2d <= pulse_inv_d; 
+        pulse_inv_3d <= pulse_inv_2d; 
+    end 
+end 
+assign pulse_b = pulse_inv_2d ^ pulse_inv_3d; 
+<<<page 119>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   112 
+2024.04 
+ 
+parameter DEPTH=16; 
+parameter ADDR_WIDTH=4; 
+parameter DATA_WIDTH=8; 
+wire wclk, wrst, wr_inr; 
+wire rclk, rrst, rd_inr; 
+wire full; 
+wire empty; 
+wire [DATA_WIDTH-1:0]wr_data; 
+reg  [DATA_WIDTH-1:0]rd_data; 
+reg  [DATA_WIDTH-1:0]fifo_ram[DEPTH-1:0]; 
+reg  [ADDR_WIDTH:0]  wr_addr; 
+reg  [ADDR_WIDTH:0]  rd_addr; 
+reg  [ADDR_WIDTH:0]  wr_addr_gray_r1; 
+reg  [ADDR_WIDTH:0]  wr_addr_gray_r2; 
+reg  [ADDR_WIDTH:0]  rd_addr_gray_r1; 
+reg  [ADDR_WIDTH:0]  rd_addr_gray_r2; 
+wire [ADDR_WIDTH:0]  wr_addr_gray; 
+wire [ADDR_WIDTH:0]  rd_addr_gray; 
+always@(posedge wclk or posedge wrst)begin 
+  if(wrst) 
+   wr_addr <= 'd0; 
+  else if(wr_inr && ~full) 
+   wr_addr <= wr_addr + 1'b1; 
+end 
+ always@(posedge rclk or posedge rrst)begin 
+  if(rrst) 
+   rd_addr <= 'd0; 
+  else if(rd_inr && ~empty) 
+   rd_addr <= rd_addr + 1'b1; 
+ end 
+assign rd_addr_gray = (rd_addr>>1) ^ rd_addr; 
+assign wr_addr_gray = (wr_addr>>1) ^ wr_addr; 
+always@(posedge rclk or posedge rrst)begin 
+  if(rrst)begin 
+   wr_addr_gray_r1 <= 'h0; 
+   wr_addr_gray_r2 <= 'h0; 
+  end 
+  else begin 
+   wr_addr_gray_r1 <= wr_addr_gray; 
+   wr_addr_gray_r2 <= wr_addr_gray_r1; 
+  end 
+end 
+<<<page 120>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   113 
+2024.04 
+ 
+ 握手方式：适用于多bit 异步信号同步化，文件名：synchronous_process_shake.v 
+ 
+always@(posedge wclk or posedge wrst)begin 
+ if(wrst)begin 
+  rd_addr_gray_r1 <= 'h0; 
+  rd_addr_gray_r2 <= 'h0; 
+ end 
+ else begin 
+  rd_addr_gray_r1 <= rd_addr_gray; 
+  rd_addr_gray_r2 <= rd_addr_gray_r1; 
+ end 
+end 
+assign full=({~rd_addr_gray_r2[ADDR_WIDTH:ADDR_WIDTH-1], 
+rd_addr_gray_r2[ADDR_WIDTH-2:0]}== wr_addr_gray)?1'b1:1'b0; 
+assign empty = (rd_addr_gray == wr_addr_gray_r2)?1'b1:1'b0; 
+always@(posedge wclk)begin 
+ if(wr_inr && ~full) 
+  fifo_ram[wr_addr[ADDR_WIDTH-1:0]]<=wr_data; 
+end 
+always@(posedge rclk)begin 
+ if(rd_inr && ~empty) 
+  rd_data <=fifo_ram[rd_addr[ADDR_WIDTH-1:0]]; 
+    else 
+        rd_data <= rd_data; 
+end 
+wire        rst; 
+wire        clk_a,clk_b; 
+wire        ena,enb; 
+wire        ack_a; 
+wire [3:0] data_a_in; 
+reg  [3:0] data_b_out; 
+reg         ena_d,ena_2d; 
+reg         req_a; 
+reg         req_a_d, req_a_2d; 
+reg         req_b_d,req_b_2d; 
+reg         ack_b; 
+reg         ack_a_d,ack_a_2d; 
+wire        ena_n_edge; 
+wire        ack_p_edge; 
+<<<page 121>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   114 
+2024.04 
+ 
+always@(posedge clk_a or posedge rst)begin 
+if(rst) begin 
+     ena_d <= 1'd0; 
+     ena_2d <= 1'd0; 
+end 
+else begin 
+     ena_d <= ena; 
+     ena_2d <= ena_d; 
+end 
+end 
+assign ena_n_edge = ~ena & ena_d; 
+always@(posedge clk_a or posedge rst)begin 
+    if(rst) 
+        req_a <= 1'd0; 
+    else if(ena_n_edge) 
+        req_a <= 1'd1; 
+    else if(ack_p_edge) 
+        req_a <= 1'd0; 
+    else 
+        req_a <= req_a; 
+end 
+always@(posedge clk_b or posedge rst)begin 
+    if(rst)begin 
+        req_a_d <= 1'd0; 
+        req_a_2d <= 1'd0; 
+    end 
+    else begin 
+        req_a_d <= req_a; 
+        req_a_2d <= req_a_d; 
+    end 
+end 
+always@(posedge clk_b or posedge rst)begin 
+ if(rst)begin 
+     req_b_d <= 1'd0; 
+        req_b_2d <= 1'd0; 
+        ack_b <= 1'd0;  
+    end 
+    else begin 
+     req_b_d <= req_a_2d; 
+        req_b_2d <= req_b_d; 
+        ack_b <= req_b_2d;  
+    end 
+end 
+<<<page 122>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   115 
+2024.04 
+ 
+5.14 管脚三态总线 
+芯片管脚有三态缓冲器资源， 用于实现三态总线逻辑。 三态逻辑需要将顶层端口设定为inout 双向
+端口，并且用一个三态逻辑来驱动，以实现片外读写通讯。 
+ 
+对于开漏（open drain）逻辑，高电平表达为高阻弱上拉。 
+ 
+可以多个读写逻辑挂在同一个总线上。 
+assign enb = ~req_b_2d & req_b_d; 
+always@(posedge clk_b or posedge rst)begin 
+ if(rst) 
+     data_b_out <= 4'd0; 
+    else if(enb) 
+     data_b_out <= data_a_in; 
+end 
+always@(posedge clk_a or posedge rst)begin 
+ if(rst)begin 
+     ack_a_d <= 1'd0; 
+        ack_a_2d <= 1'd0; 
+    end 
+    else begin 
+     ack_a_d <= ack_b; 
+        ack_a_2d <= ack_a_d; 
+ end             
+end     
+assign  ack_p_edge = ~ack_a_2d && ack_a_d; 
+assign ack_a = req_a_2d; 
+inout io1, io2, io3, io4; 
+assign io1 = tx_en ? dout : 1'bz; 
+assign io2 = rx_en ? 1'bz : dout; 
+bufif1 u_io3(io3, dout, tx_en); 
+bufif0 u_io4(io4, dout, rx_en); 
+inout sda, scl; 
+assign sda = da ? 1'bz : 1'b0; 
+assign scl = cl ? 1'bz : 1'b0; 
+<<<page 123>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   116 
+2024.04 
+ 
+也可以跨模块描述。 
+ 
+5.15 内部三态总线 
+FPGA 管脚资源可以实现三态逻辑， 内部资源无法实现三态逻辑，因此FPGA 设计内部模块之间不应
+该用三态总线通信。但如果系统功能限制必须采用内部三态总线通信时，要注意高阻空闲会按0 综合，
+0、1 冲突会按1 综合。开漏逻辑在芯片内部无法通过综合。 
+ 
+  
+inout io; 
+assign io = tx1_en ? dout1 : 1'bz; 
+assign din1 = io; 
+assign io = tx2_en ? dout2 : 1'bz; 
+assign din2 = io; 
+inout io; 
+b u_b1(.io(io)); 
+b u_b2(.io(io)); 
+ 
+module b(inout io); 
+assign io = tx_en ? dout : 1'bz; 
+assign din = io; 
+endmodule 
+wire io; 
+b u_b1(.io(io)); 
+b u_b2(.io(io)); 
+ 
+module b(inout io); 
+assign io = tx_en ? dout : 1'bz; 
+assign din = io; 
+endmodule 
+<<<page 124>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   117 
+2024.04 
+6 应用优化指南 
+本章节主要从面积、 时序与功耗三个方面介绍数字逻辑电路中常见的优化方式， 帮助用户快速理解
+不同优化指令的应用前提、适用范围、添加方法等内容，让 FPGA 的应用设计有更好的面积，时序和功
+耗性能与平衡。 
+6.1 面积优化 
+6.1.1 信号优化 
+对任意信号进行keep 操作后，综合时便不再对其进行优化，与之对应的，相同功能下电路面积会
+增大。 
+添加 keep 综合指令，对应的常数信号会得到保留，因此电路面积会增大，当用户期望进行面积优
+化时，便可去掉对应的keep 综合指令。 
+ 文件名：keep_1.v 
+ 
+添加 keep 综合指令，相同信号会得到保留，因此电路面积会增大，当用户期望进行面积优化时，
+便可去掉对应的keep 综合指令。 
+ 文件名：keep_2.v 
+ 
+添加 keep 综合指令，无用信号会得到保留，因此电路面积会增大，当用户期望进行面积优化时，
+便可去掉对应的keep 综合指令。 
+ 文件名：keep_3.v 
+module keep_1( 
+     output dout, 
+     input [31:0] din 
+); 
+(* keep *) wire [31:0] d = {din[31:1], 1'b0}; 
+assign dout = &d; 
+endmodule 
+module keep_2( 
+     output dout, 
+     input [31:0] din 
+); 
+(* keep *) wire [63:0] d = {2{din[31:0]}}; 
+assign dout = ^d; 
+endmodule 
+<<<page 125>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   118 
+2024.04 
+ 
+6.1.2 跨模块优化 
+TD 在综合时会进行跨模块优化，对任意信号进行keep hierarchy 操作后，综合时便不再对其进行
+优化， 与之对应的， 相同功能下电路面积会增大， 当用户考虑面积资源时， 需要确定是否需要添加keep 
+hierarchy 综合指令。 
+添加keep hierarchy 综合指令，对应的常数信号会得到保留，因此电路面积会增大，当用户期望
+进行面积优化时，便可去掉对应的keep hierarchy 综合指令。 
+ 文件名：keep_hierarchy_1.v 
+ 
+添加keep hierarchy 综合指令，具有一定相关性的信号会得到保留，因此电路面积会增大，当用
+户期望进行面积优化时，便可去掉对应的keep hierarchy 综合指令。 
+ 文件名：keep_hierarchy_2.v 
+module keep_3( 
+     output [7:0] dout, 
+     input [31:0] a, 
+     input [31:0] b 
+); 
+(* keep *) wire [31:0] sum = a + b; 
+assign dout[7:0] = sum[7:0]; 
+endmodule 
+module keep_hierarchy_1( 
+    output [31:0] dout 
+); 
+triple u_triple(dout, 32'd1337); 
+endmodule 
+ 
+(* keep_hierarchy *) module triple ( 
+output [31:0] dout, 
+    input [31:0] din 
+); 
+assign dout = din + (din << 1); 
+endmodule 
+<<<page 126>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   119 
+2024.04 
+ 
+6.1.3 Memory大小优化 
+TD 工具会针对用户描述的各种尺寸 Memory 逻辑进行划分，最终 实现映射到器件上 不同种类的
+Memory 资源。 因此了解器件上Memory 资源大小以及功能和位宽，会有利于在设计中选用合适的Memory
+尺寸。 
+进行工程构建时，要尽量避免设计的Memory 位宽和深度刚好比ERAM 支持的最大值多一点的场景，
+如果逻辑上无法避免，可以考虑，同时TD 提供了一套行之有效的指令操作，可以帮助用户指定Memory
+逻辑的具体实现方式，例如：/* synthesis ram_style=dram*/。memory 具体指定方法见TD 综合指令
+章节。 
+6.1.4 模块出口寄存器打拍 
+如果每个模块既在输入位置有寄存器进行打拍操作， 又在输出位置有寄存器打拍， 数据在模块间传
+输时便会出现重复打拍的场景，徒增latency。 
+d
+clk
+q
+DFF
+logic a
+module a
+d
+clk
+q
+DFF
+d
+clk
+q
+DFF
+logic b
+module b
+d
+clk
+q
+DFF
+o0
+o1
+i0
+i1
+module top
+ 
+图 6-1 输入输出寄存器模块打拍显示 
+module keep_hierarchy_2( 
+    output [31:0] dout, 
+    input [31:0] din 
+); 
+add u_add(dout, din, din); 
+endmodule 
+ 
+(* keep_hierarchy *) module add( 
+    output [31:0] sum, 
+    input [31:0] a, 
+    input [31:0] b 
+); 
+assign sum = a + b; 
+endmodule 
+<<<page 127>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   120 
+2024.04 
+为了减少latency，可以在工程中统一处理，即只在出口用寄存器进行打拍。 
+d
+clk
+q
+DFF
+logic a
+module a
+d
+clk
+q
+DFF
+logic b
+module b
+o0
+o1
+i0
+i1
+module top
+ 
+图 6-2 输出寄存器模块打拍显示 
+6.1.5 复用复位信号 
+复位信号是指用来复位电路状态的信号， 可以将电路强制进入一个稳定的确定状态。复位时需要考
+虑异步和同步复位方式，以及复位的recovery 和removal 等时序。 
+ 
+在电路设计中复位信号控制的范围有大有小， 有的可以复位整个电路， 有的复位多个子模块， 有的
+只重置一个计数器或状态机寄存器。 
+Anlogic FPGA 硬件资源多个DFF 是共享同一套控制逻辑的，拥有相同的复位逻辑的DFF 才能被相
+邻摆放。如果1 个DFF 的复位逻辑独一无二，那其它DFF 的位置将无法放与它相邻。 
+一个良好的设计会尽可能重复使用复位信号， 这需要线网相同、 边沿类型相同、 同步异步类型也相
+同。如果是多个时钟域， 请做好不同时钟复位桥， 功能上再各个时钟域的握手与时间同步， 在系统上需
+整体考虑。 
+如果两个寄存器分别用同步和异步来复位，那它们的控制逻辑不兼容，造成面积的损失。 
+wire clk, rst, d; 
+reg q; 
+always @(posedge clk, posedge rst) 
+if (rst) 
+q <= 1'b0; 
+else 
+q <= d; 
+<<<page 128>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   121 
+2024.04 
+ 
+如果不影响设计功能，可以改成都是同步复位。 
+ 
+6.1.6 用同步复位信号 
+复位信号分同步复位和异步复位， 还可以既有同步复位， 又有异步复位。 但异步复位在综合中必须
+用 DFF 上的控制逻辑实现，而同步复位既可以用DFF 控制逻辑实现，又可以用 LUT 实现，有更多自由
+度。同一功能下，同步复位可以减少资源的使用情况，提高综合能力。因此，推荐用户使用同步复位。 
+reg qa, qb; 
+always @(posedge clk, posedge rst) 
+if (rst) 
+qa <= 1'b0; 
+else 
+qa <= da; 
+always @(posedge clk) 
+if (rst) 
+qb <= 1'b1; 
+else 
+qb <= db; 
+reg qa, qb; 
+always @(posedge clk) 
+if (rst) 
+qa <= 1'b0; 
+else 
+qa <= da; 
+always @(posedge clk) 
+if (rst) 
+qb <= 1'b1; 
+else 
+qb <= db; 
+<<<page 129>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   122 
+2024.04 
+ 
+将异步复位全改成同步复位可以给TD 软件更多优化自由度。 
+ 
+在有些场景下，异步复位信号的跳变转换速度很快， 直接改成同步可能会导致复位没有被采样。这
+种场景可以先用一个寄存器对异 步复位逻辑采样，通过被采样的信号对该时钟域进行复位 。文件名：
+async2sync.v 
+reg qa, qb, qc; 
+always @(posedge clk, posedge rst) 
+if (rst) 
+qa <= 1'b0; 
+else 
+qa <= da; 
+always @(posedge clk) 
+if (rst) 
+qb <= 1'b1; 
+else 
+qb <= db; 
+always @(posedge clk, posedge rst) 
+if (rst) 
+qc <= 1'b0; 
+else if (set) 
+     qc <= 1'b1; 
+else 
+qc <= da; 
+reg qa, qb, qc; 
+always @(posedge clk, posedge rst) 
+if (rst) 
+qa <= 1'b0; 
+else 
+qa <= da; 
+always @(posedge clk) 
+if (rst) 
+qb <= 1'b1; 
+else 
+qb <= db; 
+always @(posedge clk, posedge rst) 
+if (rst) 
+qc <= 1'b0; 
+else if (set) 
+     qc <= 1'b1; 
+else 
+qc <= da; 
+<<<page 130>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   123 
+2024.04 
+ 
+对于异步信号来说， 既可以高有效采样， 也可以低有效采样。对异步信号进行同步化操作时，同步
+化后的同步复位信号可以更改异步信号的极性，则既可以是高电平有效， 也可以是低电平有效， 后续复
+位逻辑也要根据同步化逻辑来设计。 
+ example_1 
+ 
+reg sync_reset; 
+reg sync_reset_d; 
+reg sync_reset_2d; 
+wire sync_rst; 
+always @(posedge clk, posedge async_reset) 
+ if (async_reset) 
+  sync_reset <= 1'b1; 
+ else 
+  sync_reset <= 1'b0;      
+always @(posedge clk)begin 
+    sync_reset_d <= sync_reset ; 
+    sync_reset_2d <= sync_reset_d; 
+end 
+assign sync_rst = sync_reset | sync_reset_d | sync_reset_2d; 
+always @(posedge clk) 
+ if (sync_rst) 
+  dout <= 8'hAD; 
+ else 
+  dout <= din; 
+reg sync_reset,sync_reset_d,sync_reset_2d; 
+wire sync_rst; 
+always @(posedge clk, negedge async_reset_n) 
+    if (!async_reset_n) 
+        sync_reset = 1'b1; 
+    else 
+        sync_reset = 1'b0; 
+always @(posedge clk)begin 
+    sync_reset_d <= sync_reset ; 
+    sync_reset_2d <= sync_reset_d; 
+end 
+assign sync_rst = sync_reset | sync_reset_d | sync_reset_2d; 
+always @(posedge clk) 
+    if (sync_rst) 
+        dout <= 8'hAD; 
+    else 
+        dout <= din; 
+<<<page 131>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   124 
+2024.04 
+ example_2 
+ 
+6.1.7 近似数值计算 
+在电路设计中，数值计算需要消耗进位链或 DSP 资源，尤其是当数值宽度大于一个 DSP 单元宽度
+时， 会涉及到多个 DSP 级联、结果合并等操作。 所以在精度不是特别重要时， 可以省略数值的低位比特，
+只采用高位比特计算。 
+比较操作 
+ 
+比较时， 可以根据应用决定， 看是否有大小范围的比较， 如果不是需要精确比较的话， 可以只比较
+用户关心的部分，如高 20 位。 
+ 文件名：approx_cmp.v 
+reg sync_reset_n,sync_reset_d,sync_reset_2d; 
+wire sync_rst_n; 
+always @(posedge clk, negedge async_reset_n) 
+    if (!async_reset_n) 
+        sync_reset_n = 1'b0; 
+    else 
+        sync_reset_n = 1'b1; 
+always @(posedge clk)begin 
+    sync_reset_d <= sync_reset ; 
+    sync_reset_2d <= sync_reset_d; 
+end 
+assign sync_rst_n = sync_reset | sync_reset_d | sync_reset_2d; 
+always @(posedge clk) 
+    if (sync_rst_n) 
+        dout <= 8'hAD; 
+    else 
+        dout <= din; 
+reg [31:0] counter; 
+reg timeout; 
+always @(posedge clk) 
+    if (rst) 
+        counter <= 32'b0; 
+    else if (inc) 
+        counter <= counter + 1; 
+always @(posedge clk) 
+    timeout <= counter > 32'h0001_ABCD; 
+<<<page 132>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   125 
+2024.04 
+ 
+乘法操作 
+ 
+20x20 乘法器无法用单个DSP，于是需要多个DSP 级联实现，对于面积和时序都会有影响。如果不
+需要精确值，可以截掉一些低比特，用0 填充。 
+ 文件名：approx_mult.v 
+ 
+6.1.8 常数乘法优化 
+在数字电路中， 如果某个数据和常数相乘， 可以等效地转换成移位加法。 比如a*9 即a*4'b1001 就
+等价于(a<<3) + a。在 DSP 资源紧张时，用加法操作代替乘法操作，可以节约DSP 资源。 
+6.1.9 硬核使用 
+在用户工程中，可以根据RAM、DSP 等资源的使用，将相应的资源尽可能的使用目标器件内的硬核
+资源，以此减少LUT 和 REG 的使用，如乘法、加法，以及缓存资源。 
+为了减少面积，RAM 的控制，可以在TD 工具属性中或者RAM IP 使用时，选择面积优先，工具会根
+据应用场景做面积优化。 
+您也可以使用RAM、DSP 相关综合指令ram_type\mult type，将相应资源转换成硬核资源。 
+6.1.10 资源共享优化 
+对于时间上不会同时工作的多个相同的电路模块，可以改变电路的摆放位置，只保留一份操作项，
+从而同时优化系统的面积与功耗, 让多个电路模块共享一组控制信号。 
+ 文件名：multi_none.v 
+always @(posedge clk) 
+    timeout <= counter[31:12] > 20'h0001_B; 
+always @(posedge clk) 
+    area[39:0] <= width[19:0] * height[19:0]; 
+always @(posedge clk) 
+    area[39:0] <= {width[19:2] * height[19:2], 4'b0}; 
+<<<page 133>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   126 
+2024.04 
+ 
+a * b 与c * d 需要2 个乘法器同时工作，但它们的结果由下游的sel 多路选择器挑选，不会同时
+被用到。因此可以把选择逻辑移到乘法的上游，则只需要1 个乘法器。 
+ 
+6.2 时序优化 
+6.2.1 根据频率评估级数 
+在电路设计中， 如果在单个时序周期里塞进太多的组合逻辑， 软件就会难以综合优化， 最后会导致
+逻辑级数较高， 降低最终的时钟Fmax。 因此， 在设计代码时， 尽可能的降低逻辑级数以及控制链深度。 
+TD 对于PH2A 器件的推荐delay 值大约是每一级组合逻辑500ps。这里的“一级组合逻辑”并不是
+指任何组合逻辑门，简单地说可以视为一个6 输入的查找表。譬如下表所示组合逻辑电路评估级数： 
+表 6-1 组合逻辑评估级数列表 
+组合逻辑电路 评估级数 
+一个 2 输入AND 门（LUT） 0.4 级 
+一个6 输入OR 门（LUT） 1 级 
+一个 if else 分支（LUT） 0.6 级 
+一个 4 选 1 多路选择器（LUT） 1 级 
+一个 32-bit 加法操作（进位链） 2 级 
+一个 27x18 乘法操作（DSP） 2 级 
+一个带outreg 的 ERAM 0.5 级 
+一个不带outreg 的ERAM 2 级 
+ 
+module multi_none( 
+    output reg [31:0] result, 
+    input [15:0] a, 
+    input [15:0] b, 
+    input [15:0] c, 
+    input [15:0] d, 
+    input sel, 
+    input clk 
+); 
+always @(posedge clk) 
+    result <= sel ? a * b : c * d; 
+endmodule 
+always @(posedge clk) 
+    result <= (sel ? a : c) * (sel ? b : d); 
+<<<page 134>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   127 
+2024.04 
+例如500MHz 时钟域以2ns 为一个周期，则评估级数为4 级。 
+ 如果出现always @(posedge clk) y <= a+b+c; 那2 个加法器会用掉4 级，在额度范围
+内，属于是比较合理的设计。 
+ 如果出现always @(posedge clk) y <= a+b+c+d; 那软件会优化成(a+b)+(c+d)，时序
+路径仍然在 4 级额度内，没有问题。 
+ 如果出现always @(posedge clk) y <= a+b+c+d+e; 软件无法在4 级额度内综合，结果
+就可能运行时间爆涨，难以优化收敛。 
+6.2.2 Pipeline 
+如果逻辑复杂， 在一个时钟周期内级数超出限制，则软件会难以优化收敛。面对这种情况，可以采
+用 pipeline 的方式来解决，即在组合逻辑中插入寄存器进行打拍操作。相比降频，pipeline 的方案可
+以做到数据吞吐率不变，如果插入寄存器数量和位置合理，可以把latency 做到最优。 
+例如下述代码中，通过采用组合逻辑进行加乘， 且过程中没有寄存器打拍， 则关键路径将会是2 个
+加法1 个乘法，评估级数为6 级逻辑级数，在500MHz 时钟域中软件将难以收敛。 
+ 文件名：pipe_none.v 
+ 
+6.2.2.1 插Out-reg 
+如果系统包括大块的组合逻辑代码，并且该模块可能还会与其它组合逻辑相连，为了保证时序稳定，
+在输出口插入寄存器进行打拍则很有必要。 
+ 文件名：pipe_out.v 
+module pipe_none ( 
+    output [35:0] result, 
+    input [15:0] a, b, c, 
+    input [15:0] x, y, z, 
+    input clk 
+); 
+assign result = (a + b + c) * (x + y + z); 
+endmodule 
+<<<page 135>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   128 
+2024.04 
+ 
+6.2.2.2 插In-reg 
+通常对于逻辑电路，在模块设计时多采用输出打拍，而不是输入时进行打拍。采取该方法原因为：
+在输入打拍对时序没有好处， 反而徒增面积功耗。但如果遇到信号进模块之前，已经经过足够多的组合
+逻辑，并且上游关系复杂， 冒然在上游输出端插入寄存器，出错率较高， 便可选择在下游的输入插入寄
+存器。 
+ 文件名：pipe_in.v 
+ 
+6.2.2.3 插中间Reg 
+如果模块中间组合逻辑复杂，为满足时序要求，可以在组合逻辑中间插入寄存器。 
+如果只考虑有利于优化时钟周期的话插入的规模越细越好， 比如每一拍只做最简单的逻辑运算， 但
+这样可能会过分增加latency。因此最理想的插拍方式为每一拍都小于4 级评估级数。 
+ 文件名：pipe_between.v 
+module pipe_out( 
+    output reg [35:0] result, 
+    input [15:0] a, b, c, 
+    input [15:0] x, y, z, 
+    input clk 
+); 
+always @(posedge clk) 
+     result <= (a + b + c) * (x + y + z); 
+endmodule 
+reg [15:0] ra, rb, rc, rx, ry, rz; 
+always @(posedge clk) begin 
+      ra <= a; 
+     rb <= b; 
+     rc <= c; 
+     rx <= x; 
+     ry <= y; 
+     rz <= z; 
+end 
+always @(posedge clk) 
+     result <= (ra + rb + rc) * (rx + ry + rz); 
+<<<page 136>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   129 
+2024.04 
+ 
+当采用中间插拍方式进行时序优化时，要注意声明中间寄存器时所设定的宽度，声明宽度要足够保
+存计算中间值。 譬如上述代码中3 个 16-bit 位宽的数值相加， 需要18-bit 位宽才能存得下。 如果声明
+成 16-bit 位宽，则会出现丢失进位的情况。 
+6.2.2.4 插IP Reg 
+除在代码逻辑中增加打拍逻辑外，TD 软件支持的IP 在生成时也会提供打拍选项。 比如DSP 的IREG，
+MREG 和OREG，还有ERAM 的OUTREG。 
+譬如配置ERAM IP 时， 当ERAM 数据读出后可能需要进行复杂运算，应该选用OUTREG 选项，使其在
+输出端插入寄存器。 
+6.2.3 约束Multi-cycle 
+约束 multi-cycle 与 pipeline 效果相似，但该方法可省去在代码逻辑中定义打拍寄存器，并节约
+硬件上的DFF 资源。缺点则是需要写更多SDC 约束与读timing report 的经验。 
+ 文件名：pipe_out.v 
+ 
+依旧参照上述例子，在不采用插入寄存器的方法时， 可以采用加入SDC 约束的方式， 把加加乘整个
+操作约束为2 个时钟周期，从而保证时序方面的稳定，如下所示为加入的SDC 约束。 
+reg [17:0] sum_abc, sum_xyz; 
+always @(posedge clk) begin 
+      sum_abc <= a + b + c; 
+     sum_xyz <= x + y + z; 
+end 
+always @(posedge clk) 
+     result <= sum_abc * sum_xyz; 
+reg [15:0] ra, rb, rc, rx, ry, rz; 
+always @(posedge clk) begin 
+     ra <= a; 
+     rb <= b; 
+     rc <= c; 
+     rx <= x; 
+     ry <= y; 
+     rz <= z; 
+end 
+always @(posedge clk) 
+     result <= (ra + rb + rc) * (rx + ry + rz); 
+<<<page 137>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   130 
+2024.04 
+ 
+6.2.4 反沿借半拍 
+如果某个时序路径超出较少额度， 并且该时序路径上游的时序又保持很松弛的情况时，可以采用反
+沿借半拍的方式改善时序。 
+如果上下游2 个时序路径都是时钟上升沿采样(posedge)，上游时序松弛，但下游组合逻辑复杂难
+以收敛，可以将他们的打拍寄存器改成下降沿采样(negedge)。通过该方法，上游时序路径变为0.5 个
+时钟周期，通过采用set_multicycle_path 的方式，下游时序路径从1 时钟周期变成1.5 个时钟周期。 
+同理， 如果上游紧张下游松驰时， 就可以把上游约束成1.5 个时钟周期； 如果上下游都是下降沿采
+样时，便可采用将中间打拍寄存器改成上升沿采样的方式进行时序优化。 
+默认情况下，STA 遇到中间有反沿时， 会把上下游全部按照0.5 个周期的约束进行时序分析。 因此，
+在 HDL 中， 在时钟反沿后，还需要通过采用set_multicycle_path 的方式， 将SDC 中1.5 个周期的路径
+约束成2 个周期。 
+6.2.5 Retiming 
+Retiming 的场景类似于借半拍，不同于移动上下游中间采样点的时序，retiming 是把逻辑跨过中
+间的打拍寄存器移动到另一边，减小紧张一侧的逻辑，增加松弛一侧的逻辑， （也可以理解为把打拍寄
+存器往紧的一侧移动）改善时序收敛的难度。 
+ 文件名：retiming_none.v 
+ 
+create_clock -name CLK -period 1 [get_ports clk] 
+set_multicycle_path -from [get_regs ra*] -to [get_regs result*] 2  
+set_multicycle_path -from [get_regs rb*] -to [get_regs result*] 2  
+set_multicycle_path -from [get_regs rc*] -to [get_regs result*] 2  
+set_multicycle_path -from [get_regs rx*] -to [get_regs result*] 2  
+set_multicycle_path -from [get_regs ry*] -to [get_regs result*] 2  
+set_multicycle_path -from [get_regs rz*] -to [get_regs result*] 2 
+module retiming_none( 
+    output reg [31:0] sum, 
+    input [31:0] a, b, c, d, 
+    input clk 
+); 
+reg [31:0] r; 
+always @(posedge clk) begin 
+     r <= (a + b) + (c + d); 
+     sum <= r; 
+end 
+endmodule 
+<<<page 138>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   131 
+2024.04 
+D
+>
+Q
+DFF
+D
+>
+Q
+DFF+
++
++
+r sum
+a
+b
+c
+d
+ 
+图 6-3 retiming 寄存器打拍显示 
+ 文件名：retiming_down.v 
+ 
+D
+>
+Q
+DFF
+D
+>
+Q
+DFF+
++
++
+r sum
+a
+b
+c
+d
+D
+>
+Q
+DFF
+sum_ab
+sum_cd
+ 
+图 6-4 retiming 寄存器打拍显示 
+6.2.6 算术逻辑操作链式与树状 
+在电路设计中，同样是设计 a、b、c、d 四个数值求和，通过采用不同的设计思想，该电路既可以
+设计为树状，也可以设计为链式。从逻辑功能上分析，这两种实现是完成等价的，在FPGA 上的硬件资
+源消耗也完全相同，但是它们的时序路径则有所不同。 
+module retiming_down( 
+    output reg [31:0] sum, 
+    input [31:0] a, b, c, d, 
+    input clk 
+); 
+reg [31:0] sum_ab, sum_cd; 
+always @(posedge clk) begin 
+     sum_ab <= a + b; 
+     sum_cd <= c + d; 
+     sum <= sum_ab + sum_cd; 
+end 
+endmodule 
+<<<page 139>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   132 
+2024.04 
+树状：o = (a + b) + (c + d) 
+从a、b、c、d 到o 的四条路径都是经过2 次加法操作。这种实现方式比较适合a、b、c、d 到达时
+间（arrival time）相近的场景。 
++
++
++
+a
+b
+c
+d
+o
+ 
+图 6-5 树状逻辑加法显示 
+链状o = a + b + c + d 
+从 a、b、c、d 到 o 的四条路径分别要经过3、3、2、1 次加法操作。这种实现方式比较适合a、b
+到达时间早，d 到达时间晚的场景。 
++
++
+a
+b
+c
+d
+o
++
+ 
+图 6-6 顺序逻辑加法显示 
+大部分场景，TD 软件都会根据到达时间自动在树和链之间等价转换。但如果中间有特殊操作，比
+如对于进位的特殊处理， 使得软件不能推导出等价变换， 则可能影响电路的转换， 进而造成时序不如预
+期。遇到这种情况可以根据电路逻辑，人为改变电路运算结构，优化时序。 
+6.2.7 算术逻辑等价变换 
+遇到算术比较运算中有常数的情况时， 可以通过移动操作数来减少资源。主要原因为： 常数的运算
+可在综合时进行， 所以当把常数移到同一侧是便可节约硬件资源和时序。以下C*都代表代码中的常数。 
+表 6-2 算术逻辑等价列表 
+<<<page 140>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   133 
+2024.04 
+一个加法，一个比较 一个比较 
+a + C1 == C2 a == C2 - C1 
+a + C1 != C2 a != C2 - C1 
+a + C1 <= C2 a <= C2 - C1 
+a + C1 < C2 a < C2 - C1 
+a + C1 >= C2 a >= C2 - C1 
+a + C1 > C2 a > C2 - C1 
+ 文件名：arith_cmp1.v 
+ 
+ 文件名：arith_cmp2.v 
+ 
+当进行比较操作时， 两端选取变量不同， 所消耗资源面积的大小和时序的优劣也有所不同，信号与
+信号的比较操作，所消耗资源面积和时序要求要大于信号与常量的比较， 因此采取变量放在同一侧的方
+法可节约硬件资源和时序。 
+表 6-3 比较操作列表 
+一个加法，一个比较（大） 一个减法，一个比（小） 
+a + C1 == b C1 == b - a 
+a + C1 != b C1 != b - a 
+a + C1 <= b C1 <= b - a 
+a + C1 < b C1 < b - a 
+a + C1 >= b C1 >= b - a 
+a + C1 > b C1 > b - a 
+ 文件名：arith_cmp3.v 
+module arith_cmp1( 
+    output enough, 
+    input [31:0] a 
+); 
+localparam OFFSET = 32'h0000_BEEF; 
+localparam THRESHOLD = 32'hDEAD_BEEF; 
+assign enough = a + OFFSET >= THRESHOLD; 
+endmodule 
+assign enough = a >= THRESHOLD - OFFSET; 
+<<<page 141>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   134 
+2024.04 
+ 
+ 文件名：arith_cmp4.v 
+ 
+6.2.8 If长链优化转树状 case 
+对同一个寄存器赋值， 有时可能需要根据另一个信号的值分情况描述。 比较常见的情况如： 总线根
+据地址信号读写内部寄存器；寄存器根据有限状态机的状态选择逻辑。 
+如果写成一连串if – else if – else 分支语句，综合出来就会是一个接一个的mux 长链。 
+ 文件名：if_chain.v 
+module arith_cmp3( 
+    output enough, 
+    input [31:0] b, 
+    input [31:0] a 
+); 
+localparam OFFSET = 32'h0000_BEEF; 
+assign enough = a + OFFSET >= b; 
+endmodule 
+assign enough = a >= THRESHOLD - OFFSET; 
+<<<page 142>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   135 
+2024.04 
+ 
+为提高时序性能，以上逻辑可改写为更利于软件综合的描述方式，即可将多组的if - else if -
+else 语句改写成可读性更强的case 语句。 通过更改描述，软件便会综合成平衡模式下8 选 1 的多路选
+择器，保证每个寄存器出发的时序路径基本一致。 
+ 
+6.2.9 If长链换顺序 
+module if_chain( 
+      output reg [7:0] dout, 
+      input [7:0] reg0, reg1, reg2, reg3, reg4, reg5, reg6, reg7, 
+      input [2:0] addr, 
+      input clk 
+); 
+always @(posedge clk) 
+    if (addr == 3'b000)  
+        dout <= reg0; 
+    else if (addr == 3'b001)  
+        dout <= reg1; 
+    else if (addr == 3'b010)  
+        dout <= reg2; 
+    else if (addr == 3'b011)  
+        dout <= reg3; 
+    else if (addr == 4'b100)  
+        dout <= reg4; 
+    else if (addr == 3'b101)  
+        dout <= reg5; 
+    else if (addr == 3'b110)  
+        dout <= reg6; 
+    else  
+        dout <= reg7; 
+endmodule 
+always @(posedge clk) 
+    case (addr) 
+        3'b000: dout <= reg0; 
+        3'b001: dout <= reg1; 
+        3'b010: dout <= reg2; 
+        3'b011: dout <= reg3; 
+        3'b100: dout <= reg4; 
+        3'b101: dout <= reg5; 
+        3'b110: dout <= reg6; 
+        default: dout <= reg7; 
+    endcase 
+<<<page 143>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   136 
+2024.04 
+有时由if – else if – else 描述的长链会比平衡的case 语句更好，譬如电路设计中发生数据
+来源到达时间不平衡的场景时，该场景应该让到达时间晚的信号出现在更高优先级的if 语句中，使其
+综合在长链下游MUX 输入端。 
+ 
+6.2.10 大MUX语句优化 
+大的case 语句或者索引取址语句会综合出大的MUX 逻辑，最后用LUT 来实现。一般可以认为一个
+6 输入LUT 可以实现一个4 选 1 MUX，那16 选1 MUX 就需要2 级6 输入LUT，而64 选1 MUX 就需要3
+级，因此当 case 的条件信号位宽较宽，条件分支较多时，就很容易成为时序瓶颈。如果分支中用到的
+上游信号已经经过组合逻辑电路，则问题会更严重。 
+对此最简单有效的方法就是插拍。比如case 条件信号6 bits，64 个分支，代表3 级组合逻辑，上
+游已经过1 级组合逻辑，因此总数为4 级。如果1GHz 只允许每个时钟周期内2 级，就需要在MUX 中间
+插一级。 
+ 文件名：mux_big.v 
+module top ( 
+     output reg [31:0] result, 
+     input [31:0] lhs, rhs, 
+     input [31:0] operator, 
+     input clk 
+); 
+wire [63:0] product = lhs * rhs; 
+wire [31:0] sum = lhs + rhs; 
+wire [31:0] diff = lhs - rhs; 
+wire [31:0] neg = -lhs; 
+always @(posedge clk) 
+     if (operator == 0) 
+         result <= product[63:32]; 
+     else if (operator == 1) 
+         result <= product[31:0]; 
+     else if (operator == 2) 
+         result <= sum; 
+     else if (operator == 3) 
+         result <= diff; 
+     else if (operator == 4) 
+         result <= neg; 
+     else 
+         result <= 32'b0; 
+endmodule 
+<<<page 144>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   137 
+2024.04 
+ 
+要注意的是地址信号同样需要打拍。 
+ 文件名：mux_pipeline.v 
+ 
+always @(posedge clk) 
+    dout <= data[addr]; 
+reg [5:2] addr_r; 
+always @(posedge clk) 
+     addr_r[5:2] <= addr[5:2]; 
+reg [7:0] data_r[15:0]; 
+always @(posedge clk) 
+     for (i=0; i<16; i=i+1) 
+         data_r[i] <= data[{i, addr[1:0]}]; 
+always @(posedge clk) 
+     dout <= data_r[addr_r[5:2]]; 
+<<<page 145>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   138 
+2024.04 
+  
+图 6-7 未插入与插入打拍寄存器 
+6.2.11 FSM优化 
+FSM 中状态寄存器有着多种编码方式， 不同编码方式对电路的综合性能影响不同， 因此可以结合实
+
+<<<page 146>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   139 
+2024.04 
+际的电路设计需求人为更改编码方式，或者采用加综合指令的方式更改编码方式。 
+6.3 功耗优化 
+6.3.1 Clock gating 
+Clock gating 通过控制时钟信号的跳转，减少时钟网络功耗和对应的DFF 翻转功耗，达到优化功
+耗的效果。 在电路中如果有某个子模块可以长时间不工作，譬如当某个模块处于用户不使能、 输入不跳
+变、输出不被选中的情况时，便可将其时钟关断，以此节省时钟网络翻转所带来的动态功耗。 
+Anlogic FPGA 的芯片按family 进行分类时， 包含有多种带使能的时钟缓冲器， 可以按需在Language 
+Template 里查询调用。 
+ 
+图 6-8 时钟缓冲器显示 
+FPGA 芯片的时钟资源是有限的，该限制包括全局时钟和局部时钟，因此当调用时钟缓冲时会导致
+时钟信号变多，而时钟信号过多可能会导致布局合法化困难，时钟信号布线困难。注意：TD 软件目前
+不支持根据用户if (clock_enable) q <= d; 语句自动推导clock gate 逻辑。 
+6.3.2 数据路径Gating 
+数字电路中可能存在一些运算逻辑， 其使用频率非常低， 但功耗极大。出现这种情况时， 可以使用
+它的使能逻辑将其输入gate 住，使其输入不再翻转，减少其动态功耗。 
+ 文件名：alu.v 
+
+<<<page 147>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   140 
+2024.04 
+ 
+譬如在此电路中，选中乘法操作的概率很低，但乘法运算电路却一直随着输入a、b 而工作，内部
+大量组合逻辑的翻转便会造成大量功耗的产生。 
+&
+-
++
+*
+ 
+图 6-9 运算电路显示 
+ 文件名：alu_gate.v 
+always @(posedge clk) 
+    if (enable) 
+        case (operator) 
+            0: result <= a & b; 
+            1: result <= a + b; 
+            2: result <= a - b; 
+            3: result <= a * b; 
+   default: result <= result; 
+        endcase 
+<<<page 148>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   141 
+2024.04 
+ 
+为了减少上述乘法器造成的动态功耗， 便可采用插入少量逻辑， 利用使能信号在乘法操作不被选中
+时人为拉低乘法器输入的方法，进而规避其功耗的产生。 
+&
+-
++
+*
+ 
+图 6-10 插入逻辑的运算电路显示 
+6.3.3 避免不稳定的组合逻辑环 
+电路设计中， 首先要避免组合逻辑环。TD 软件会在电路中检测组合逻辑环并提示warning。 请在看
+到 warning 后仔细检查修改电路设计，去掉组合逻辑环。 
+组合逻辑环有两种， 稳定的和不稳定的。 不稳定的组合逻辑环常见的例子有奇数个反相器组合的环
+及其相似电路。 不稳定的组合逻辑环会在特定的状态下进入振荡状态。通过在设计中规避不稳定组合逻
+辑环可以进一步优化功耗。 
+ 
+wire multi_en = enable && (operator == 3); 
+wire [15:0] multi_a = a & {16{multi_en}}; 
+wire [15:0] multi_b = b & {16{multi_en}}; 
+always @(posedge clk) 
+    if (enable) 
+        case (operator) 
+            0: result <= a & b; 
+            1: result <= a + b; 
+            2: result <= a - b; 
+            3: result <= multi_a * multi_b; 
+   default:result <= result; 
+        endcase 
+<<<page 149>>>
+  
+TangDynasty® 综合与FPGA 应用编码指南_TD6.0_V1.0  
+SWUG106                            www.anlogic.com                                   142 
+2024.04 
+版本信息 
+日期 修订记录 
+2024/4 首次根据版本软件发布手册 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+版权所有©2024 上海安路信息科技股份有限公司  
+未经本公司书面许可， 任何单位和个人都不得擅自摘抄、 复制、 翻译本文档内容的部分或全部， 并不得
+以任何形式传播。  
+免责声明  
+本文档并未授予任何知识产权的许可， 并未以明示或暗示， 或以禁止发言或其他方式授予任何知识产权
+许可；本文档仅为向用户提供使用器件的参考， 协助用户正确地使用安路科技产品之用， 其著作权归安
+路科技所有；本文档所展示的任何产品信息均不构成安路科技对所涉产品或服务作出任何明示或默示
+的声明或保证。  
+安路科技将不定期地对本文档进行更新、 修订。 用户如需获取最新版本的文档， 可通过安路科技的官方
+网站（网址为：https://www.anlogic.com）自行查询下载，也可联系安路科技的销售人员咨询获取。 

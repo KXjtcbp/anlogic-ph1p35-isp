@@ -1,0 +1,143 @@
+==================== design_top_wrapper.v ====================
+  1| 
+  2| 
+  3| module design_top_wrapper (
+  4|     input wire        I_sys_clk,
+  5|     input wire        I_rst_n,
+  6|       
+  7|     output wire       O_cam_scl,
+  8|     inout  wire       IO_cam_sda,
+  9|     output wire       O_cam_24m,
+ 10|     output wire       O_cam_rst,
+ 11|       
+ 12|     inout wire [1:0]  I_button,
+ 13| 
+ 14|     output wire       O_screen_pwm,
+
+==================== isp/isp_top.v ====================
+  1| module isp_top (
+  2|     input 			axi4s_video_aclk,
+  3|     input 			I_rst_n			,
+  4|     input 			I_tlast			,
+  5|     input 			I_tuser			,
+  6|     input [39:0] 	I_tdata			,
+  7|     input 			I_tvalid		,
+  8|     input [9:0] 	I_tdest			,
+  9|     input 			O_tready		,
+ 10|     output [127:0] 	O_tdata			,
+ 11|     output 			O_tlast			,
+ 12|     output 			O_tuser			,
+ 13|     output 			O_tvalid		,
+ 14|     output 			I_tready		,
+
+==================== my_algo/my_algo.v ====================
+  1| //===========================================================================
+  2| //  my_algo.v  --  自研图像增强模块「RGB 点运算算法集」
+  3| //
+  4| //  项目：2026 全国大学生嵌入式芯片与系统设计竞赛 选题二
+  5| //  平台：安路 PH1P35 (HX1P35A) + SC500CS + DDR2 + HDMI 720p60
+  6| //
+  7| //  插入位置：user_source/hdl_source/isp/isp_top.v
+  8| //            —— 接在 awb 之后、data_96bit_to_128bit 之前
+  9| //
+ 10| //  ---------------------------------------------------------------------
+ 11| //  一、数据格式（已由三处源码交叉验证，务必不要改）
+ 12| //  ---------------------------------------------------------------------
+ 13| //   96 bit = 4 个像素 × 24 bit
+ 14| //     像素0 = I_tdata[95:72]  像素1 = I_tdata[71:48]
+
+==================== my_algo/key_mode_ctrl.v ====================
+  1| //===========================================================================
+  2| //  key_mode_ctrl.v  --  按键算法模式切换控制器
+  3| //
+  4| //  项目：2026 全国大学生嵌入式芯片与系统设计竞赛 选题二
+  5| //
+  6| //  作用：把开发板上的一个按键变成「算法模式切换键」，
+  7| //        每按一次在 5 种模式之间循环：
+  8| //            MODE 0(原图) → MODE 1(灰度) → MODE 2(伪彩热力图)
+  9| //            → MODE 3(二值化) → MODE 4(卡通化) → 回到 0
+ 10| //
+ 11| //  ---------------------------------------------------------------------
+ 12| //  按键硬件事实（来自 user_source/constraints_source/pin.adc）
+ 13| //  ---------------------------------------------------------------------
+ 14| //    set_pin_assignment { I_button[0] } { LOCATION = N2;  ... PULLTYPE = PULLUP; }
+
+==================== uics500_cfg/uics500reg_720p60.v ====================
+  1| `timescale 1ns / 1ps
+  2| 
+  3| /*
+  4|  * SC500CS原厂HD模式：1280x720@60，24MHz MCLK，2-Lane RAW10，
+  5|  * Lane速率约480Mbps。Sensor内部启用VBIN和HSUB，直接输出720p，
+  6|  * FPGA端不再做1024x600固定裁剪。
+  7|  *
+  8|  * 后续若切换Sensor模式，还应同步检查MIPI约束、图像宽高、ISP、
+  9|  * DDR帧缓存、HDMI时序、HDMI TX参数及PLL，避免各级尺寸不一致。
+ 10|  */
+ 11| module uics500reg_720p60 #(
+ 12|     // ★ 诊断开关（2026-10-06 加）：
+ 13|     //   1'b1 = 打开 Sensor 灰度递增测试图（手册表2-10 p31，写 0x4501 = 0xbc）
+ 14|     //   1'b0 = 正常图像（写 0x4501 = 0xb4，即该寄存器默认值）
+
+==================== uics500_cfg/uics500regAE.v ====================
+  1| `timescale 1ns / 1ps
+  2| /*******************************MILIANKE*******************************
+  3| *Company : MiLianKe Electronic Technology Co., Ltd.
+  4| *WebSite:https://www.milianke.com
+  5| *TechWeb:https://www.uisrc.com
+  6| *tmall-shop:https://milianke.tmall.com
+  7| *jd-shop:https://milianke.jd.com
+  8| *taobao-shop1: https://milianke.taobao.com
+  9| *Create Date: 2019/12/17
+ 10| *Module Name:HDMI_IN_Test
+ 11| *File Name:HDMI_IN_Test.v
+ 12| *Description: 
+ 13| *The reference demo provided by Milianke is only used for learning. 
+ 14| *We cannot ensure that the demo itself is free of bugs, so users 
+
+==================== uics500_cfg/uicfgcs500_720p.v ====================
+  1| `timescale 1ns / 1ns
+  2| 
+  3| module uicfgcs500_720p #(
+  4|     parameter CLK_DIV = 16'd239
+  5| )(
+  6|     input  wire        I_clk,
+  7|     input  wire        I_rst_n,
+  8|     input  wire        I_ae_req,
+  9|     input  wire [15:0] I_exposure_time,
+ 10|     input  wire [15:0] I_analog_gain,
+ 11|     output wire        O_cam_scl,
+ 12|     inout  wire        IO_cam_sda,
+ 13|     output reg         O_cfg_done,
+ 14|     output reg         O_ae_cfg_done
+
+==================== uics500_cfg/SC500GainTbl.v ====================
+  1| `timescale 1ns / 1ps
+  2| //////////////////////////////////////////////////////////////////////////////////
+  3| // Create Date:    01:32:02 06/12/2023 
+  4| // Module Name:    SC500GainTbl 
+  5| //////////////////////////////////////////////////////////////////////////////////
+  6| module SC500GainTbl(
+  7| 	input 			I_clk,
+  8| 	input 			I_rstn,
+  9| 	input 	[6:0] 	I_gain_idx,
+ 10| 	output reg	[15:0] 	O_gain_code
+ 11| );
+ 12| 
+ 13| 	always @(posedge I_clk) begin
+ 14| 		O_gain_code <= 0; 
+
+==================== uiisp_beta/ae_set.v ====================
+  1| /*******************************MILIANKE*******************************
+  2| *Company : MiLianKe Electronic Technology Co., Ltd.
+  3| *WebSite:https://www.milianke.com
+  4| *TechWeb:https://www.uisrc.com
+  5| *tmall-shop:https://milianke.tmall.com
+  6| *jd-shop:https://milianke.jd.com
+  7| *taobao-shop1: https://milianke.taobao.com
+  8| *Create Date: 2023/03/23
+  9| *Module Name:
+ 10| *File Name:
+ 11| *Description: 
+ 12| *The reference demo provided by Milianke is only used for learning. 
+ 13| *We cannot ensure that the demo itself is free of bugs, so users 
+ 14| *should be responsible for the technical problems and consequences
