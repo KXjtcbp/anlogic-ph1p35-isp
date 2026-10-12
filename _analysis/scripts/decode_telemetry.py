@@ -12,7 +12,11 @@ import numpy as np
 from PIL import Image
 
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-WS = r"E:\FPGA"
+# 仓库根：本文件在 <REPO>/_analysis/scripts/ 下 ⇒ 上溯两级。
+# 原版写死 E:\FPGA\，别人的克隆不在那里就跑不了（同 compile_check.py 2026-10-12 的可移植性改动）。
+# 需要时可用环境变量 FPGA_WS 覆盖。
+_HERE = os.path.dirname(os.path.abspath(__file__))
+WS = os.environ.get("FPGA_WS") or os.path.dirname(os.path.dirname(_HERE))
 MIX = os.path.join(WS, "proj", "baseline", "lab3", "user_source", "hdl_source", "hdmi_mixer.v")
 
 # ---------- 1. 解析字形库 ----------
