@@ -32,6 +32,20 @@ $artifacts = @{
 
 $failed = @()
 
+# NOTE 4 -- TD's command-line flow reads <run>/camera_to_dsi_display.prj, NOT
+#   td_project/*.al. Adding a .v file ONLY to the .al makes it a BLACK BOX:
+#   the log shows  HDL-8007 ERROR: <mod> is a black box in <file>(<line>)
+#   and the flow still finishes, writing a .bit whose QoR is bit-identical to
+#   the previous run. 2026-10-12: ae_stat.v / ae_ctrl.v hit exactly this.
+#   So sync the .al file list into every run's .prj BEFORE launching.
+$syncPy = 'E:/FPGA/_analysis/scripts/sync_al_to_prj.py'
+if (Test-Path $syncPy) {
+    Write-Host '--- syncing .al file list into run .prj ---'
+    & python $syncPy 2>&1 | ForEach-Object { Write-Host ("    " + $_) }
+} else {
+    Write-Host ("--- WARNING: {0} not found, .prj not synced ---" -f $syncPy) -ForegroundColor Yellow
+}
+
 foreach ($r in $runs) {
     $dir = Join-Path $base $r
     $log = "E:/FPGA/_analysis/td_direct_$r.log"

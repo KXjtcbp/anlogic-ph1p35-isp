@@ -57,6 +57,23 @@
    ⇒ `S_gi <= S_gi`，增益永远不动（现象：请求发了 90 次，增益值恒为初值）。
    **修法：决策与执行必须用两个寄存器（先锁存目标 `S_gi_tgt`，下一拍再执行）。**
 
+5. **★TD 命令行流程读的是 run 目录的 `.prj`，不是 `td_project/*.al`★（2026-10-12，第二次"假成功"）**
+   往 `camera_to_dsi_display.al` 里加了 `ae_stat.v` / `ae_ctrl.v` 两条 `<File>`，
+   但 `_Runs\syn_1\camera_to_dsi_display.prj`（TD 实际打开的工程文件）没同步 ⇒ 两个新模块
+   **没被 analyze，被当黑盒**，日志里只有两行：
+   ```
+   HDL-8007 ERROR: ae_ctrl(...) is a black box in .../design_top_wrapper.v(603)
+   HDL-8007 ERROR: ae_stat is a black box in .../isp_top.v(192)
+   ```
+   而 TD **照常跑完 place / route / bitgen 并写出了一个新时间戳的 `.bit`**；
+   `route.qor` 的数字（WNS +84ps / #slices 17687 / #RAMs 60 / 线长 4703376）
+   与上一轮**逐位相同** —— 因为网表压根没变。
+   **判据：`*.bit` 时间戳变新 ≠ 构建成功。必须同时看 (a) 日志里有没有 `HDL-8007 ... black box`，
+   (b) `route.qor` 的资源/线长数字有没有变化。**
+   **对策：`_analysis/scripts/sync_al_to_prj.py` 把 `.al` 的 `<Verilog>` 清单同步进每个 run 的 `.prj`；
+   `_analysis/misc/td_run_direct.ps1` 在启动前自动调用它。**
+
+
 ---
 
 ## 新仓库（`E:\FPGA` 根）里程碑
