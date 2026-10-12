@@ -87,11 +87,23 @@ flow.status
 *.orig
 
 # ---------- 7. 例外：里程碑交付物必须手动归档，允许入库 ----------
-#   用法： releases/<日期>_<版本>/camera_to_dsi_display.bit + NOTE.md
+#   用法： proj/releases/<日期>_<版本>/camera_to_dsi_display.bit + readMe.txt
+#   注：proj/ 下另有一份 proj/.gitignore（继承自旧仓库），它的 `!releases/**`
+#       已经覆盖 proj/releases/；这里再写一条是为了不依赖那个文件的相对路径语义。
+!proj/releases/**
+!proj/releases/**/*.bit
+!proj/releases/**/*.bid
+!proj/releases/**/*.ts
 !/releases/**
 !/releases/**/*.bit
 
-# ---------- 8. Windows / 编辑器 ----------
+# ---------- 8. inbox 采集投递箱（临时落盘，正式归档进 captures/）----------
+#   规则：inbox/*.png 是队友/用户临时丢进来的采集图，归档到 captures/<日期>_<阶段>/
+#         之后就该清空，不进版本库；模板文件要留。
+/inbox/*.png
+/inbox/*.jpg
+
+# ---------- 9. Windows / 编辑器 ----------
 Thumbs.db
 desktop.ini
 *.swp

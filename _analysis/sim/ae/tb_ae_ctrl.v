@@ -9,8 +9,9 @@
 //          O_ae_req 单拍脉冲 -> I_ae_cfg_done 拉低 AE_DL_CYCLES 拍 -> 再拉高。
 // 覆盖 : CASE1 复位默认值      CASE2 配置未完成时不动作
 //        CASE3 稳定期不动作     CASE4 欠亮 -> 逐档加亮并收敛进死区
-//        CASE5 高光护栏优先降档 CASE6 暗场景护栏阻止加亮
+//        CASE5 高光护栏优先降档 CASE6 极暗场景必须加亮（lo_hot 默认关闭）
 //        CASE7 冻结(I_ae_en=0)  CASE8 请求脉冲宽度必须恰好 1 拍
+//        CASE9 量纲回归（Σ(Y*256)）  CASE10 板上实测 A4 暗场景必须加亮
 //=============================================================================
 `timescale 1ns / 1ns
 
@@ -122,12 +123,39 @@ module tb_ae_ctrl;
         end
     endtask
 
-    // 用当前增益索引算出这一帧的亮度总和。
+    // 用当前增益索引算出这一帧的亮度总和（x1 口径）。
     // 亮度模型：mean(gi) = gi * 9 / 16  （gi=124 -> 69.75, gi=127 -> 71.4）
-    //           luma_sum = mean * 2^20 = gi * 589824
+    //           ΣY = mean * 2^20 = gi * 589824
+    function [39:0] ls_x1(input [6:0] gi);
+        begin
+            ls_x1 = gi * 40'd589824;
+        end
+    endfunction
+
+    //==========================================================================
+    // ★★ 接口契约（2026-10-12 补）★★
+    //   ae_stat.v 的 O_luma_sum 口径是 Σ(Y * 256)，不是 ΣY —— 它把
+    //   77R+150G+29B 直接累加、没有 >>8。证据：
+    //     ae_stat.v:66    注释写的就是 "Σ (Y * 256)"
+    //     ae_stat.v:90-93 移位加法树输出 18bit 后直接累加，无右移
+    //     tb_ae_stat.v CASE 2  sum=8153600 = 256*(77*200+150*100+29*50)
+    //   ae_ctrl 内部再取 [39:8] 还原成 ΣY 后与 TARGET_SUM 比较。
+    //
+    //   旧版 TB 直接往 I_luma_sum 灌 ΣY，**恰好把这个 256 倍量纲错误遮住了**：
+    //   TB 全过、上板才暴露（AE 每帧都判"过亮"，增益一路降到最低档，
+    //   画面越开越黑：A1 6.24 -> A2 2.17 -> A3 1.12 -> A4 0.98）。
+    //   所以这里必须按 Σ(Y*256) 灌，并加 CASE 9 做量纲回归。
+    //==========================================================================
     function [39:0] ls_of_gi(input [6:0] gi);
         begin
-            ls_of_gi = gi * 40'd589824;
+            ls_of_gi = ls_x1(gi) << 8;
+        end
+    endfunction
+
+    // 把"想要的 ΣY"换算成 ae_stat 的口径
+    function [39:0] as_stat(input [39:0] sum_x1);
+        begin
+            as_stat = sum_x1 << 8;
         end
     endfunction
 
@@ -195,11 +223,11 @@ module tb_ae_ctrl;
         for (i = 0; i < 90; i = i + 1) begin
             do_frame(ls_of_gi(gain_idx), 32'd0, 32'd0);
         end
-        $display("        final gain_idx=%0d  luma_sum=%0d  state=%0d  req_n=%0d",
-                 gain_idx, ls_of_gi(gain_idx), state, req_n);
+        $display("        final gain_idx=%0d  luma_sum(x1)=%0d  state=%0d  req_n=%0d",
+                 gain_idx, ls_x1(gain_idx), state, req_n);
         chk("gain_idx climbed",                 gain_idx > GI_INIT);
-        chk("converged inside dead-band",       (ls_of_gi(gain_idx) >= (TSUM-DBAND)) &&
-                                                (ls_of_gi(gain_idx) <= (TSUM+DBAND)));
+        chk("converged inside dead-band",       (ls_x1(gain_idx) >= (TSUM-DBAND)) &&
+                                                (ls_x1(gain_idx) <= (TSUM+DBAND)));
         chk("gain_idx in expected range 116..127", (gain_idx >= 7'd116) && (gain_idx <= 7'd127));
         chk("state == 2 (closed loop)",         state == 2'd2);
         chk("meas_luma plausible (65..85)",     (meas_luma >= 8'd65) && (meas_luma <= 8'd85));
@@ -208,10 +236,10 @@ module tb_ae_ctrl;
         //--------------------- CASE 5 : 高光护栏优先降档 ---------------------
         $display("[CASE 5] highlight guard overrides (hi_cnt=20 > 200/64=3)");
         gi_before = gain_idx;
-        do_frame(TSUM, 32'd0, 32'd0);          // flush：先让上一用例的高光统计过去
+        do_frame(as_stat(TSUM), 32'd0, 32'd0);          // flush：先让上一用例的高光统计过去
         gi_before = gain_idx;
         for (i = 0; i < 4; i = i + 1) begin
-            do_frame(TSUM, 32'd20000, 32'd0);  // 亮度在靶心 + 高光超限
+            do_frame(as_stat(TSUM), 32'd20000, 32'd0);  // 亮度在靶心 + 高光超限
             $display("        frame %0d : O_gain_idx=%0d (S_gi=%0d) step=%0d req_n=%0d",
                      i, gain_idx, dut.S_gi, dut.S_step_n, req_n);
         end
@@ -220,14 +248,20 @@ module tb_ae_ctrl;
         $display("        gain_idx %0d -> %0d", gi_before, gi_after);
         chk("index decreased despite in-band brightness", gi_after < gi_before);
 
-        //--------------------- CASE 6 : 暗场景护栏阻止加亮 -------------------
-        $display("[CASE 6] low-light guard blocks brightening");
-        do_frame(40'd1000000, 32'd0, 32'd300000);   // flush：先让上一用例的高光统计过去
+        //--------------------- CASE 6 : 极暗场景必须加亮 ----------------------
+        // ★2026-10-12 行为变更★：LO_GUARD_SHIFT 默认改成 0（关闭该护栏），
+        //   因为上板场景（宿舍、只开显示器）整帧 dk<=8 占 65%~95%，
+        //   旧的阈值 25% 把加亮通道整个堵死 —— 而暗场景加增益正是相机的
+        //   正确行为；真正要防的削顶由 S_hi_hot 兜着。
+        //   本用例断言：整帧近黑 + 亮度远低于靶 ⇒ 必须加亮。
+        $display("[CASE 6] very dark scene must BRIGHTEN (lo_hot disabled by default)");
+        do_frame(as_stat(40'd1000000), 32'd0, 32'd300000);   // flush
         gi_before = gain_idx;
-        for (i = 0; i < 8; i = i + 1) do_frame(40'd1000000, 32'd0, 32'd300000);
+        for (i = 0; i < 8; i = i + 1) do_frame(as_stat(40'd1000000), 32'd0, 32'd300000);
         gi_after = gain_idx;
-        $display("        gain_idx %0d -> %0d", gi_before, gi_after);
-        chk("index NOT increased", gi_after == gi_before);
+        $display("        gain_idx %0d -> %0d  (near-black frac = 300000/1048576 = 28.6%%)",
+                 gi_before, gi_after);
+        chk("index INCREASED despite 28.6% near-black pixels", gi_after > gi_before);
 
         //--------------------- CASE 7 : 冻结 ---------------------------------
         $display("[CASE 7] freeze (I_ae_en=0)");
@@ -245,6 +279,40 @@ module tb_ae_ctrl;
         $display("[CASE 8] O_ae_req pulse width");
         $display("        total requests=%0d  max pulse width=%0d cycles", req_n, max_pulse);
         chk("every request is exactly 1 cycle wide", (req_stuck == 0) && (max_pulse == 1));
+
+        //--------------------- CASE 9 : ★量纲回归（2026-10-12 上板 bug）★ ----
+        //   灌一个"在 ×256 口径下正好等于 TARGET_SUM"的值：
+        //     正确实现 ⇒ S_lsum = TARGET_SUM ⇒ 落在死区内 ⇒ 索引不动
+        //     旧实现   ⇒ S_lsum = TARGET_SUM<<8 ⇒ 判为过亮 ⇒ 降档   ← 就是这个 bug
+        $display("[CASE 9] scale regression: luma_sum = TARGET_SUM<<8 must be in dead-band");
+        do_frame(as_stat(TSUM), 32'd0, 32'd0);
+        // 结果级检查：DUT 内部还原出来的 S_lsum 必须正好等于 TARGET_SUM。
+        // 旧写法（直接比 I_luma_sum）会得到 TARGET_SUM<<8，这一条立刻报错。
+        $display("        dut.S_lsum=%0d   TARGET_SUM=%0d", dut.S_lsum, TSUM);
+        chk("DUT S_lsum == TARGET_SUM (x1 scale restored)", dut.S_lsum == TSUM);
+        gi_before = gain_idx;
+        for (i = 0; i < 6; i = i + 1) do_frame(as_stat(TSUM), 32'd0, 32'd0);
+        gi_after = gain_idx;
+        $display("        gain_idx %0d -> %0d (must be equal)", gi_before, gi_after);
+        chk("in dead-band => index unchanged", gi_after == gi_before);
+
+        //--------------------- CASE 10 : 板上实测场景回归 ---------------------
+        //   2026-10-12 20:03 A4 实测：Ymean 0.98、dk<=8 占 95.4%、几乎全黑。
+        //   换算 ΣY = 0.98 * 2^20 ≈ 1027604（TB 用 NOM=2^20）。
+        //   旧实现这里会降档（→ 上板"越开越黑"）；正确实现必须加档。
+        //   lo_cnt 故意取 1000000（占 95.4%），刚好卡在旧阈值 25% 之上 ——
+        //   同时验证 lo_hot 护栏确实已关闭。
+        $display("[CASE 10] on-board A4 scene (Ymean 0.98, 95.4%% near-black) must BRIGHTEN");
+        // 先把增益压到低档：喂一个远高于靶的亮帧。否则上一用例已把增益顶到 127，
+        // "必须加档"在满档上无法成立。
+        for (i = 0; i < 30; i = i + 1) do_frame(as_stat(40'd800000000), 32'd0, 32'd0);
+        $display("        preset: gain_idx driven down to %0d", gain_idx);
+        do_frame(as_stat(40'd1027604), 32'd0, 32'd1000000);
+        gi_before = gain_idx;
+        for (i = 0; i < 6; i = i + 1) do_frame(as_stat(40'd1027604), 32'd0, 32'd1000000);
+        gi_after = gain_idx;
+        $display("        gain_idx %0d -> %0d (must increase)", gi_before, gi_after);
+        chk("dark on-board scene brightens",  gi_after > gi_before);
 
         //--------------------- 汇总 ------------------------------------------
         if (errors == 0) $display("*** ALL PASS, errors=0 ***");

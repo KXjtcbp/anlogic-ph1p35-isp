@@ -27,6 +27,9 @@
 //   1) 稳定帧数：cam_cfg_done 之后先数 SETTLE_FRAMES 帧不动（等传感器收敛）。
 //   2) 高光护栏（最高优先级）：hi_cnt > pix_cnt>>HI_GUARD_SHIFT ⇒ 无条件降档。
 //   3) 暗场景护栏：lo_cnt > pix_cnt>>LO_GUARD_SHIFT ⇒ 停止加亮（防把夜景硬拉成白天）。
+//      ★2026-10-12 上板后默认关闭（LO_GUARD_SHIFT=0）★：本工程的使用场景
+//      （宿舍、只开显示器）整帧 65%~95% 都是近黑像素，该护栏会把 AE 完全锁死。
+//      实测数据见 _analysis/out/inbox_stats.txt 的 dk<=8% 一列。
 //   4) 死区：|帧亮度和 - TARGET_SUM| < TARGET_SUM/21（约 4.8%）⇒ 不动作，防抖。
 //   5) 比例步长：误差 >100% 走 STEP_FAST 档；>25% 走 STEP_MID 档；否则 STEP_SLOW 档。
 //      每帧只走一次（60fps ⇒ 最快 8 档/帧 ≈ 0.22 倍/帧），1~2 秒内收敛，不会过冲振荡。
@@ -52,7 +55,9 @@ module ae_ctrl #(
     parameter [6:0]  STEP_SLOW       = 7'd1,      // 其余每帧步进
     // ---- 护栏（阈值都是 2 的负幂，用移位比较，零硬件代价）----
     parameter [5:0]  HI_GUARD_SHIFT  = 6'd6,      // hi_cnt > pix_cnt/64  = 1.56%  ⇒ 降档
-    parameter [5:0]  LO_GUARD_SHIFT  = 6'd2,      // lo_cnt > pix_cnt/4   = 25%    ⇒ 停止加亮
+    parameter [5:0]  LO_GUARD_SHIFT  = 6'd0,      // ★0 = 关闭该护栏★（>>0 = 自身，永不成立）
+                                                  //   上板实测 2026-10-12：本场景 dk<=8 占 65%~95%，
+                                                  //   旧的 6'd2（25%）把加亮通道整个堵死。详见 215 行注释。
     parameter        AE_ENABLE_RESET = 1'b0       // 复位值，仅用于文档化（实际由 SW4 决定）
 )(
     input  wire        I_clk,             // 24 MHz 配置域（S_24m_clk）
@@ -128,9 +133,23 @@ module ae_ctrl #(
     wire        S_frame_ok = (S_pix_cnt > (NOM_PIX >> 1));    // 少于半帧不动作（防半帧/丢帧误判）
 
     wire        S_hi_hot  = (S_hi_cnt > (S_pix_v >> HI_GUARD_SHIFT)); // 削顶过多
-    wire        S_lo_hot  = (S_lo_cnt > (S_pix_v >> LO_GUARD_SHIFT)); // 场景本来就是暗的
+    wire        S_lo_hot  = (S_lo_cnt > (S_pix_v >> LO_GUARD_SHIFT)); // 见下方 LO_GUARD_SHIFT 的说明
 
-    wire [39:0] S_lsum      = S_luma_sum;
+    //-------------------------------------------------------------------------
+    // ★★ 2026-10-12 修：量纲对齐 ★★
+    //   ae_stat.v 的 O_luma_sum 契约是 Σ(Y * 256)（它把 77R+150G+29B 直接累加，
+    //   没有做 >>8；见 ae_stat.v:66 的注释与 :90-93 的移位加法树）。
+    //   而 TARGET_SUM 是 ΣY（scale x1）。两者差 256 倍。
+    //
+    //   原写法 `wire [39:0] S_lsum = S_luma_sum;` 直接比 ⇒ S_lsum 永远比
+    //   S_target 大 256 倍 ⇒ S_too_bright 恒真 ⇒ 每一帧都执行 S_gi_dec
+    //   ⇒ 增益一路砸到最低档。上板现象（2026-10-12 20:03 批次）：
+    //     A1 Ymean 6.24 -> A2 2.17 -> A3 1.12 -> A4 0.98，越开越黑。
+    //
+    //   取高 32 位 = 精确除以 256（因为 Σ(Y*256) 一定是 256 的整数倍，无信息损失）。
+    //   量程校验：ΣY 最大 = 921600*255 = 2.35e8 < 2^28，32 位绰绰有余。
+    //-------------------------------------------------------------------------
+    wire [39:0] S_lsum      = {8'd0, S_luma_sum[39:8]};
     wire [39:0] S_target    = TARGET_SUM[39:0];
     wire [39:0] S_dband     = DEADBAND_SUM[39:0];
     wire [39:0] S_hi_bound  = S_target + S_dband;
@@ -186,8 +205,15 @@ module ae_ctrl #(
     //   于是 120-1=119 被截成 119 的最低位 = 1，增益一帧就从 120 掉到 1。
     //   （2026-10-12 tb_ae_ctrl CASE 5 抓到这个 bug。同类隐患：任何做算术的 wire 都要写位宽。）
     wire [6:0] S_gi_dec = (S_gi > S_step_n) ? (S_gi - S_step_n) : 7'd0;
-    wire [6:0] S_gi_inc_raw = S_gi + S_step_n;
-    wire [6:0] S_gi_inc = (S_gi_inc_raw > 7'd127) ? 7'd127 : S_gi_inc_raw;
+    // ★加档必须在 8 位上求和，再判溢出★
+    //   写成 `wire [6:0] S_gi_inc_raw = S_gi + S_step_n;` 会让 124+8=132 先在
+    //   7 位里截成 4，之后 `4 > 127` 恒假 ⇒ 钳位形同虚设 ⇒ 增益从接近满档
+    //   直接跳到接近最低档，然后在"爬升→回绕→再爬升"之间振荡。
+    //   （2026-10-12 tb_ae_ctrl CASE 6 抓到：增益 116 -> 4，一帧掉 112 档。）
+    //   这与 CASE 5 那个"漏写位宽"是同一类错误：**凡是做算术的 wire，
+    //   既要写对位宽，也要保证溢出判断发生在截断之前。**
+    wire [7:0] S_gi_inc_raw = {1'b0, S_gi} + {1'b0, S_step_n};
+    wire [6:0] S_gi_inc = (S_gi_inc_raw > 8'd127) ? 7'd127 : S_gi_inc_raw[6:0];
 
     // 是否允许在本帧做决策
     wire S_can_act = I_cam_cfg_done && I_ae_cfg_done && I_ae_en &&
@@ -197,7 +223,15 @@ module ae_ctrl #(
                          : (S_hi_hot)          ? S_gi_dec          // 护栏优先：无条件降
                          : (S_too_bright)      ? S_gi_dec
                          : (S_too_dark && !S_lo_hot) ? S_gi_inc
-                         :                       S_gi;             // 含：暗场景被 lo_hot 拦住
+                         :                       S_gi;
+    //   ★!!S_lo_hot 这一项默认恒真（LO_GUARD_SHIFT = 0 ⇒ >>0 = 自身 ⇒
+    //     S_lo_cnt > S_pix_cnt 永不成立）★
+    //   原因：上板实测（2026-10-12 20:03/20:04）这一场景 dk<=8 的像素占
+    //   65%~95%，旧的 LO_GUARD_SHIFT=2（阈值 25%）把加亮通道整个堵死，
+    //   AE 在"本来就暗"的场景里反而完全不动 —— 而那不是我们想要的：
+    //   暗场景加增益正是相机的正确行为，真正需要防的是高光削顶，
+    //   那一侧已经有 S_hi_hot 兜着（阈值 1/64 ≈ 1.56%）。
+    //   若将来要恢复"太黑就别追了"的策略，把 LO_GUARD_SHIFT 调回 2 即可。
 
     always @(posedge I_clk or negedge I_rst_n) begin
         if (!I_rst_n) begin
