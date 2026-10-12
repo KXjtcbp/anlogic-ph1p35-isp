@@ -1,18 +1,56 @@
 # -*- coding: utf-8 -*-
 """用 ModelSim 对 .al 里列出的 HDL 源文件做逐文件编译体检。
 
-基线（改名之前）：参与编译 39 个，38 个 exit=0；
-唯一失败是既有问题 ph1p35_ddr\ph1p35_324_ddr_wrapper.v(61) Undefined variable: 'dhi_clk'。
-判据：改名之后其余 38 个必须仍然 exit=0。
-"""
-import os, subprocess, glob, sys
+用法：
+    python compile_check.py                  # 仓库根自动从本文件位置推断
+    python compile_check.py <仓库根>          # 或显式指定
+    set MODELSIM_BIN=<...>\\win32aloem        # 若 ModelSim 不在默认路径，先设这个环境变量
 
-VLOG = r"E:\modelsim\modelsim_ase\win32aloem\vlog.exe"
-VLIB = r"E:\modelsim\modelsim_ase\win32aloem\vlib.exe"
-WORK = r"E:\FPGA\_analysis\hdlbase"
-HDL = r"E:\FPGA\proj\baseline\lab3\user_source\hdl_source"
-FILELIST = r"E:\FPGA\_analysis\reports\hdl_filelist.txt"
-LOG = r"E:\FPGA\_analysis\reports\compile_check.txt"
+基线：唯一允许失败的是既有问题
+    ph1p35_ddr\\ph1p35_324_ddr_wrapper.v(61) Undefined variable: 'dhi_clk'
+其余必须全部 exit=0。出现别的失败 = 你的改动引入的。
+
+★路径可移植性★（2026-10-12 改）：原版把 E:\\FPGA 与 E:\\modelsim 写死，
+队友克隆到别的目录后脚本跑不了。现在仓库根从 __file__ 上溯三级推断，
+ModelSim 路径按 环境变量 → 常见安装位置 → PATH 的顺序查找。
+"""
+import os, subprocess, glob, sys, shutil
+
+# 本文件在 <REPO>/_analysis/scripts/ 下 ⇒ 上溯三级得到 <REPO>
+_HERE = os.path.dirname(os.path.abspath(__file__))
+REPO = os.path.abspath(sys.argv[1]) if len(sys.argv) > 1 \
+       else os.path.dirname(os.path.dirname(_HERE))
+
+
+def _find_ms(tool):
+    """按 环境变量 MODELSIM_BIN → 常见安装位置 → PATH 的顺序找 vlog/vlib。"""
+    cands = [os.environ.get("MODELSIM_BIN", ""),
+             r"E:\modelsim\modelsim_ase\win32aloem",
+             r"C:\modelsim\modelsim_ase\win32aloem",
+             r"D:\modelsim\modelsim_ase\win32aloem",
+             r"C:\intelFPGA\modelsim_ase\win32aloem"]
+    for d in cands:
+        if d and os.path.isfile(os.path.join(d, tool + ".exe")):
+            return os.path.join(d, tool + ".exe")
+    p = shutil.which(tool)
+    if p:
+        return p
+    sys.exit("找不到 %s.exe。请设置环境变量 MODELSIM_BIN 指向 ModelSim 的 win32aloem 目录，"
+             "例如：set MODELSIM_BIN=E:\\modelsim\\modelsim_ase\\win32aloem" % tool)
+
+
+VLOG = _find_ms("vlog")
+VLIB = _find_ms("vlib")
+WORK = os.path.join(REPO, "_analysis", "hdlbase")
+HDL = os.path.join(REPO, "proj", "baseline", "lab3", "user_source", "hdl_source")
+FILELIST = os.path.join(REPO, "_analysis", "reports", "hdl_filelist.txt")
+LOG = os.path.join(REPO, "_analysis", "reports", "compile_check.txt")
+
+print("REPO     =", REPO)
+print("VLOG     =", VLOG)
+print("FILELIST =", FILELIST)
+if not os.path.isfile(FILELIST):
+    sys.exit("文件清单不存在：%s\n（请确认 REPO 推断是否正确，或用 python compile_check.py <仓库根> 显式指定）" % FILELIST)
 
 files = [l.strip() for l in open(FILELIST, encoding="utf-8-sig")
          if l.strip().endswith((".v", ".sv")) and ".enc." not in l]
