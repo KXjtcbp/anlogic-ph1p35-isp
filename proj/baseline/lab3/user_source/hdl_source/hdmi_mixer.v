@@ -82,6 +82,7 @@ module hdmi_mixer #(
     //     [48:42] = AE 当前模拟增益索引 0..127
     //   最慢 16.7ms 才变一次，远慢于像素时钟 ⇒ 内部 2 级 FF 同步即可，不需要握手。
     input wire [48:0] I_dbg_vals,
+    input wire [33:0] I_dbg2_vals,       // [HDR-2026-10-12m] 第二行遥测：AE 决策内部量
 
     output wire       O_video_rd_en,  // DDR 读请求使能：直接跟随 I_video_de
     input wire[23:0]  I_video_rd_data,  // DDR 读回的 24bit 像素（RGB888），进入 2 拍流水后参与叠加
@@ -252,14 +253,20 @@ module hdmi_mixer #(
 
     reg [48:0] S_dbg_1d;   // 遥测总线 2 级同步（准静态信号，无需握手）
     reg [48:0] S_dbg_2d;
+    reg [33:0] S_dbg2_1d;             // [HDR-2026-10-12m] 第二行遥测同步链
+    reg [33:0] S_dbg2_2d;
     always @(posedge I_clk or negedge I_rst_n) begin
         if(!I_rst_n) begin
             S_dbg_1d <= 49'd0;
             S_dbg_2d <= 49'd0;
+            S_dbg2_1d <= 34'd0;
+            S_dbg2_2d <= 34'd0;
         end
         else begin
             S_dbg_1d <= I_dbg_vals;
             S_dbg_2d <= S_dbg_1d;
+            S_dbg2_1d <= I_dbg2_vals;
+            S_dbg2_2d <= S_dbg2_1d;
         end
     end
 
@@ -268,6 +275,32 @@ module hdmi_mixer #(
     wire [7:0]  S_dbg_ml = S_dbg_2d[39:32];  // AE 实测帧均值
     wire [15:0] S_dbg_gr = S_dbg_2d[31:16];  // AWB R 增益 [19:4]
     wire [15:0] S_dbg_gb = S_dbg_2d[15:0];   // AWB B 增益 [19:4]
+
+    //------------------------------------------------------------------------
+    // [HDR-2026-10-12m] 第 5 层：第二行橙色遥测（AE 决策链内部量）
+    //------------------------------------------------------------------------
+    localparam DBG2_OSD_X     = 12'd376;
+    localparam DBG2_OSD_Y     = 12'd164;   // 第一行在 152..161，MODE 在 176..185
+    localparam DBG2_OSD_W     = 12'd304;   // 19 字符 x 16 字距
+    localparam DBG2_OSD_H     = 12'd10;
+
+    wire       S_d2_can = S_dbg2_2d[4];
+    wire       S_d2_frm = S_dbg2_2d[3];
+    wire       S_d2_req = S_dbg2_2d[2];
+    wire       S_d2_aec = S_dbg2_2d[1];
+    wire       S_d2_cam = S_dbg2_2d[0];
+    wire [7:0] S_d2_set = S_dbg2_2d[12:5];
+    wire [6:0] S_d2_nxt = S_dbg2_2d[19:13];
+    wire [6:0] S_d2_dec = S_dbg2_2d[26:20];
+    wire [6:0] S_d2_inc = S_dbg2_2d[33:27];
+    reg [11:0] S_dbg2_x;
+    reg [11:0] S_dbg2_y;
+    reg [4:0]  S_dbg2_idx;
+    reg [3:0]  S_dbg2_lx;
+    reg [3:0]  S_dbg2_ly;
+    reg [4:0]  S_dbg2_gl;
+    reg [4:0]  S_dbg2_bits;
+    reg        S_dbg2_on;
 
     reg [11:0] S_dbg_x;
     reg [11:0] S_dbg_y;
@@ -305,6 +338,9 @@ module hdmi_mixer #(
                 5'd16: F_dbg_glyph = 35'b10001_11011_10101_10001_10001_10001_10001; // M
                 5'd17: F_dbg_glyph = 35'b01111_10000_10000_01110_00001_00001_11110; // S
                 5'd18: F_dbg_glyph = 35'b10001_10001_10001_10101_10101_11011_10001; // W
+                    5'd19: F_dbg_glyph = 35'b11111_00100_00100_00100_00100_00100_00100; // T
+                    5'd20: F_dbg_glyph = 35'b10001_11001_11001_10101_10011_10001_10001; // N
+                    5'd21: F_dbg_glyph = 35'b10001_10001_10001_10001_10001_10001_01110; // U
                 default: F_dbg_glyph = 35'b00000_00000_00000_00000_00000_00000_00000; // 空格
             endcase
         end
@@ -927,6 +963,14 @@ module hdmi_mixer #(
         S_dbg_ly   = 4'd0;
         S_dbg_gl   = 5'd0;
         S_dbg_bits = 5'd0;
+            S_dbg2_x    = 12'd0;
+            S_dbg2_y    = 12'd0;
+            S_dbg2_idx  = 5'd0;
+            S_dbg2_lx   = 4'd0;
+            S_dbg2_ly   = 4'd0;
+            S_dbg2_gl   = 5'd0;
+            S_dbg2_bits = 5'd0;
+            S_dbg2_on   = 1'b0;
         S_dbg_on   = 1'b0;
 
         S_logo_x = 12'd0;
@@ -1302,6 +1346,64 @@ module hdmi_mixer #(
                 end
 
                 if(S_dbg_on) begin
+                    S_osd_hit   = 1'b1;
+                    S_osd_color = COLOR_DBG_TEXT;
+                end
+            end
+
+            //------------------------------------------------------------------
+            // [HDR-2026-10-12m] 第 5 层：第二行橙色遥测 "FcbnamTssNnnDnnUnn"
+            //   F + 5 位标志 c=can_act b=frame_ok n=req_pend a=ae_cfg_done m=cam_cfg_done
+            //   T ss = S_settle（正常 3C=60）  N nn = S_gi_next
+            //   D nn = S_gi_dec               U nn = S_gi_inc
+            //   窗口 (376,164)-(679,173)，与第 4 层(152..161)、MODE(176..185) 不重叠。
+            //   ★纯诊断，AE 定案后整块删掉★
+            //------------------------------------------------------------------
+            if((S_x_2d >= DBG2_OSD_X) && (S_x_2d < (DBG2_OSD_X + DBG2_OSD_W)) &&
+               (S_y_2d >= DBG2_OSD_Y) && (S_y_2d < (DBG2_OSD_Y + DBG2_OSD_H))) begin
+                S_dbg2_x   = S_x_2d - DBG2_OSD_X;
+                S_dbg2_y   = S_y_2d - DBG2_OSD_Y;
+                S_dbg2_idx = S_dbg2_x[8:4];
+                S_dbg2_lx  = S_dbg2_x[3:0];
+                S_dbg2_ly  = S_dbg2_y[3:0];
+
+                case(S_dbg2_idx)
+                    5'd0 : S_dbg2_gl = 5'd15;                        // 'F'
+                    5'd1 : S_dbg2_gl = S_d2_can ? 5'd1 : 5'd0;
+                    5'd2 : S_dbg2_gl = S_d2_frm ? 5'd1 : 5'd0;
+                    5'd3 : S_dbg2_gl = S_d2_req ? 5'd1 : 5'd0;
+                    5'd4 : S_dbg2_gl = S_d2_aec ? 5'd1 : 5'd0;
+                    5'd5 : S_dbg2_gl = S_d2_cam ? 5'd1 : 5'd0;
+                    5'd6 : S_dbg2_gl = 5'd19;                        // 'T'
+                    5'd7 : S_dbg2_gl = {1'b0, S_d2_set[7:4]};
+                    5'd8 : S_dbg2_gl = {1'b0, S_d2_set[3:0]};
+                    5'd9 : S_dbg2_gl = 5'd20;                        // 'N'
+                    5'd10: S_dbg2_gl = {2'b00, S_d2_nxt[6:4]};
+                    5'd11: S_dbg2_gl = {1'b0,  S_d2_nxt[3:0]};
+                    5'd12: S_dbg2_gl = 5'd13;                        // 'D'
+                    5'd13: S_dbg2_gl = {2'b00, S_d2_dec[6:4]};
+                    5'd14: S_dbg2_gl = {1'b0,  S_d2_dec[3:0]};
+                    5'd15: S_dbg2_gl = 5'd21;                        // 'U'
+                    5'd16: S_dbg2_gl = {2'b00, S_d2_inc[6:4]};
+                    default: S_dbg2_gl = {1'b0, S_d2_inc[3:0]};
+                endcase
+
+                if(S_dbg2_lx < 4'd5) begin
+                    S_dbg2_bits = F_dbg_rowbits(S_dbg2_gl, S_dbg2_ly[2:0]);
+                    case(S_dbg2_lx[2:0])
+                        3'd0: S_dbg2_on = S_dbg2_bits[4];
+                        3'd1: S_dbg2_on = S_dbg2_bits[3];
+                        3'd2: S_dbg2_on = S_dbg2_bits[2];
+                        3'd3: S_dbg2_on = S_dbg2_bits[1];
+                        3'd4: S_dbg2_on = S_dbg2_bits[0];
+                        default: S_dbg2_on = 1'b0;
+                    endcase
+                end
+                else begin
+                    S_dbg2_on = 1'b0;
+                end
+
+                if(S_dbg2_on) begin
                     S_osd_hit   = 1'b1;
                     S_osd_color = COLOR_DBG_TEXT;
                 end
