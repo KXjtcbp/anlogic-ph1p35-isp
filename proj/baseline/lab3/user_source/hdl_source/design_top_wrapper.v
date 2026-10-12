@@ -624,6 +624,22 @@ module design_top_wrapper (
         .O_state        (S_ae_state    )
     );
 
+    // ---- [HDR-2026-10-12k] 遥测总线：把 5 个诊断量打包送给 u_hdmi_mixer 显示 ----
+    //   屏幕第 4 行（橙色）会显示：  AE <增益索引2位16进制> S<状态1位> M<实测均值2位> W<R增益4位> <B增益4位>
+    //     例：AE7F S2 M46 W1000 1053   ⇒ 增益档 0x7F(=15.75x)、状态 2=闭环、
+    //          本帧实测均值 0x46(=70)、AWB 的 R 增益 0x1000(=1.000x)、B 增益 0x1053(=1.020x)
+    //   为什么要显示：AE 的 O_gain_idx / O_state / O_meas_luma 在此之前一根线都没引出来，
+    //     导致"AE 到底动没动增益"只能靠亮度差反推（而画面里但凡有会动的东西就会误判）。
+    //     AWB 那两个增益同理 —— 屏幕上偏色到底是"没算出来"还是"没施加"，
+    //     只有把 in_r_r1/in_b_r1 拿出来看才能一刀切开。
+    //   CDC：这 5 个量最慢 16.7ms 才变一次，远慢于 HDMI 像素时钟；两条时钟已由
+    //     camera_to_dsi_display.sdc 的 set_clock_groups -asynchronous 隔离，
+    //     hdmi_mixer 内部只用 2 级 FF 打拍，不做握手（与 I_debug_status 同待遇）。
+    wire [19:0] S_wb_gain_r;   // awb 实际在用的 R 通道增益（20bit Q16，0x10000 = 1.000x）
+    wire [19:0] S_wb_gain_b;   // awb 实际在用的 B 通道增益（20bit Q16）
+    wire [48:0] S_osd_dbg = {S_ae_gi, S_ae_state, S_ae_meas,
+                             S_wb_gain_r[19:4], S_wb_gain_b[19:4]};
+
     // ---- [HDR-2026-10-11i] SW1/SW2 同步器声明提前到此 ----------------
     //   因为下面 S_gain_applied 要比较 {S_sw1_sync1,...,S_sw4_sync1}；它们的 always 块仍在后部 SW1/SW2 那一节。
     reg S_sw1_sync0, S_sw1_sync1;
@@ -903,7 +919,10 @@ isp_top u_isp_top (
 .O_ae_pix_cnt    (S_ae_stat_pix ),
 .O_ae_hi_cnt     (S_ae_stat_hi  ),
 .O_ae_lo_cnt     (S_ae_stat_lo  ),
-.O_ae_frame_tgl  (S_ae_stat_tgl )
+.O_ae_frame_tgl  (S_ae_stat_tgl ),
+// [HDR-2026-10-12k] 白平衡遥测（awb 实际在用的 R/B 增益，ISP 域准静态）
+.O_wb_gain_r     (S_wb_gain_r   ),
+.O_wb_gain_b     (S_wb_gain_b   )
   );
 
 
@@ -1080,6 +1099,8 @@ isp_top u_isp_top (
         //   实测 Setup WNS 由 +0.103ns 掉到 -4.416ns。别改回去。
         .I_algo_mode_tgl ( S_algo_mode_tgl    ),
         .I_algo_mode_wrap( S_algo_mode_wrap   ),
+        // [HDR-2026-10-12k] 遥测总线（49bit，24MHz/ISP 域 → 像素域，hdmi_mixer 内部 2 级 FF 同步）
+        .I_dbg_vals      ( S_osd_dbg          ),
         .O_video_rd_en   ( S_hdmi_window_rd_en),
         .I_video_rd_data ( S_video_rd_data    ),
         .O_hdmi_vsync    ( S_hdmi_out_vsync   ),

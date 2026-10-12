@@ -55,7 +55,17 @@ module isp_top (
     output [31:0]   O_ae_pix_cnt    ,
     output [31:0]   O_ae_hi_cnt     ,
     output [31:0]   O_ae_lo_cnt     ,
-    output          O_ae_frame_tgl
+    output          O_ae_frame_tgl ,
+    //--------------------------------------------------------------------------
+    // [HDR-2026-10-12k] 白平衡遥测：把 awb 实际在用的 R/B 增益原样送到顶层。
+    //   纯直通，不参与任何运算。顶层把 [19:4] 拆成 4 位十六进制显示在 OSD 上
+    //   （0x1000 = 1.000x，0x1240 = 1.140x）。
+    //   这是判定"偏色到底出在 AWB 计算、AWB 施加、还是 AWB 之后"的唯一直接证据：
+    //     屏幕上 R/G 明显 <1.0 而 O_gain_r 一直停在 0x1000  ⇒ 增益没算出来/没施加；
+    //     屏幕上 R/G <1.0 而 O_gain_r ≈ 0x1240（已经在补偿） ⇒ 偏色在 AWB 之后。
+    //--------------------------------------------------------------------------
+    output [19:0]   O_wb_gain_r     ,
+    output [19:0]   O_wb_gain_b
 );
  
 wire         m_axis_tvalid;  //synthesis keep 
@@ -217,7 +227,9 @@ awb #(
     .O_tuser (awb_O_tuser ),
     .O_tdata (awb_O_tdata ),
     .O_tvalid(awb_O_tvalid),
-    .O_tready(awb_O_tready)
+    .O_tready(awb_O_tready),
+    .O_gain_r(O_wb_gain_r),
+    .O_gain_b(O_wb_gain_b)
 );
 
     //==========================================================================

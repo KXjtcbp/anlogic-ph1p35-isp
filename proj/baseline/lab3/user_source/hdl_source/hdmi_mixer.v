@@ -73,6 +73,16 @@ module hdmi_mixer #(
     // [OUR ALGO] 回卷翻转线：模式由 4 回到 0 时翻转一次（单 bit，跨域同 tgl）
     input wire        I_algo_mode_wrap,  // 回卷翻转位：模式由 4 回到 0 时翻转一次，用于纠正本地偶发漏计数
 
+    // [HDR-2026-10-12k] 遥测总线（49bit，来自 24MHz/ISP 域的准静态诊断量）。
+    //   打包格式（LSB 起）：
+    //     [15:0]  = AWB 实际在用的 B 通道增益 [19:4]（0x1000 = 1.000x）
+    //     [31:16] = AWB 实际在用的 R 通道增益 [19:4]
+    //     [39:32] = AE 本帧实测帧均值
+    //     [41:40] = AE 状态（0=等表 1=稳定计时 2=闭环 3=冻结）
+    //     [48:42] = AE 当前模拟增益索引 0..127
+    //   最慢 16.7ms 才变一次，远慢于像素时钟 ⇒ 内部 2 级 FF 同步即可，不需要握手。
+    input wire [48:0] I_dbg_vals,
+
     output wire       O_video_rd_en,  // DDR 读请求使能：直接跟随 I_video_de
     input wire[23:0]  I_video_rd_data,  // DDR 读回的 24bit 像素（RGB888），进入 2 拍流水后参与叠加
 
@@ -222,6 +232,102 @@ module hdmi_mixer #(
     localparam ALG_OSD_W      = 12'd84;    // 6 字符 x 14
     localparam ALG_OSD_H      = 12'd10;
     localparam COLOR_ALG_TEXT = 24'h00ff88; // 亮绿色，和黄色 CNT、青色 Logo 字都区分得开
+
+//---- [HDR-2026-10-12k] 第 4 行：橙色遥测行（诊断用，功能做完可以整块删掉） ----
+    //--------------------------------------------------------------------------
+    // 内容 19 个字符，全部用同一套 5x7 字形放大：
+    //     "AExxSxMxxWxxxxBxxxx"
+    //      A E <增益索引2位> S<状态1位> M<实测均值2位> W<R增益4位> B<B增益4位>
+    //   例：AE7FS2M46W10531000  ⇒ 增益档 0x7F、状态 2=闭环、实测均值 0x46(=70)、
+    //                            AWB 的 R 增益 0x1053(=1.020x)、B 增益 0x1000(=1.000x)
+    //   位置 (376,152)-(679,161)：在 Logo(0,0)-(159,159) 右侧、CNT 行(375,120)-(574,143)
+    //   下方、MODE 行(176,176)-(259,185) 右上，三者都不重叠。
+    //   颜色橙色 0xff8000，与黄色 CNT、亮绿 MODE、青色 Logo 都能分开。
+    //--------------------------------------------------------------------------
+    localparam DBG_OSD_X      = 12'd376;
+    localparam DBG_OSD_Y      = 12'd152;
+    localparam DBG_OSD_W      = 12'd304;   // 19 字符 x 16 字距
+    localparam DBG_OSD_H      = 12'd10;    // 字形 7 行，窗口留 10
+    localparam COLOR_DBG_TEXT = 24'hff8000; // 橙色
+
+    reg [48:0] S_dbg_1d;   // 遥测总线 2 级同步（准静态信号，无需握手）
+    reg [48:0] S_dbg_2d;
+    always @(posedge I_clk or negedge I_rst_n) begin
+        if(!I_rst_n) begin
+            S_dbg_1d <= 49'd0;
+            S_dbg_2d <= 49'd0;
+        end
+        else begin
+            S_dbg_1d <= I_dbg_vals;
+            S_dbg_2d <= S_dbg_1d;
+        end
+    end
+
+    wire [6:0]  S_dbg_gi = S_dbg_2d[48:42];  // AE 模拟增益索引 0..127
+    wire [1:0]  S_dbg_st = S_dbg_2d[41:40];  // AE 状态
+    wire [7:0]  S_dbg_ml = S_dbg_2d[39:32];  // AE 实测帧均值
+    wire [15:0] S_dbg_gr = S_dbg_2d[31:16];  // AWB R 增益 [19:4]
+    wire [15:0] S_dbg_gb = S_dbg_2d[15:0];   // AWB B 增益 [19:4]
+
+    reg [11:0] S_dbg_x;
+    reg [11:0] S_dbg_y;
+    reg [4:0]  S_dbg_idx;
+    reg [3:0]  S_dbg_lx;
+    reg [3:0]  S_dbg_ly;
+    reg [4:0]  S_dbg_gl;
+    reg [4:0]  S_dbg_bits;
+    reg        S_dbg_on;
+
+    // 遥测行专用字形库：0..9 = '0'..'9'，10..15 = 'A'..'F'，16='M' 17='S' 18='W'，
+    //   其余（含空格）= 全 0。
+    //   每个字形 35bit = 7 行 x 5 列，行 0 在 bit[34:30]，行 6 在 bit[4:0]，
+    //   每行 bit[4] 是最左列（与 F_alg_char_bits 的约定一致）。
+    function [34:0] F_dbg_glyph;
+        input [4:0] I_c;
+        begin
+            case(I_c)
+                5'd0 : F_dbg_glyph = 35'b01110_10001_10001_10001_10001_10001_01110; // 0
+                5'd1 : F_dbg_glyph = 35'b00100_01100_00100_00100_00100_00100_01110; // 1
+                5'd2 : F_dbg_glyph = 35'b01110_10001_00001_00010_00100_01000_11111; // 2
+                5'd3 : F_dbg_glyph = 35'b11111_00010_00100_00010_00001_10001_01110; // 3
+                5'd4 : F_dbg_glyph = 35'b00010_00110_01010_10010_11111_00010_00010; // 4
+                5'd5 : F_dbg_glyph = 35'b11111_10000_11110_00001_00001_10001_01110; // 5
+                5'd6 : F_dbg_glyph = 35'b00110_01000_10000_11110_10001_10001_01110; // 6
+                5'd7 : F_dbg_glyph = 35'b11111_00001_00010_00100_01000_01000_01000; // 7
+                5'd8 : F_dbg_glyph = 35'b01110_10001_10001_01110_10001_10001_01110; // 8
+                5'd9 : F_dbg_glyph = 35'b01110_10001_10001_01111_00001_00010_01100; // 9
+                5'd10: F_dbg_glyph = 35'b01110_10001_10001_11111_10001_10001_10001; // A
+                5'd11: F_dbg_glyph = 35'b11110_10001_10001_11110_10001_10001_11110; // B
+                5'd12: F_dbg_glyph = 35'b01111_10000_10000_10000_10000_10000_01111; // C
+                5'd13: F_dbg_glyph = 35'b11110_10001_10001_10001_10001_10001_11110; // D
+                5'd14: F_dbg_glyph = 35'b11111_10000_10000_11110_10000_10000_11111; // E
+                5'd15: F_dbg_glyph = 35'b11111_10000_10000_11110_10000_10000_10000; // F
+                5'd16: F_dbg_glyph = 35'b10001_11011_10101_10001_10001_10001_10001; // M
+                5'd17: F_dbg_glyph = 35'b01111_10000_10000_01110_00001_00001_11110; // S
+                5'd18: F_dbg_glyph = 35'b10001_10001_10001_10101_10101_11011_10001; // W
+                default: F_dbg_glyph = 35'b00000_00000_00000_00000_00000_00000_00000; // 空格
+            endcase
+        end
+    endfunction
+
+    // 取某个字形在第 I_row(0..6) 行上的 5bit 点阵（用固定分段，避免综合出桶形移位器）
+    function [4:0] F_dbg_rowbits;
+        input [4:0] I_c;
+        input [2:0] I_row;
+        reg [34:0] g;
+        begin
+            g = F_dbg_glyph(I_c);
+            case(I_row)
+                3'd0:    F_dbg_rowbits = g[34:30];
+                3'd1:    F_dbg_rowbits = g[29:25];
+                3'd2:    F_dbg_rowbits = g[24:20];
+                3'd3:    F_dbg_rowbits = g[19:15];
+                3'd4:    F_dbg_rowbits = g[14:10];
+                3'd5:    F_dbg_rowbits = g[9:5];
+                default: F_dbg_rowbits = g[4:0];
+            endcase
+        end
+    endfunction
 
 //---- 字形库 A：Logo 文字 A/N/L/O/G/I/C（5x7 点阵） ----
 //   ※ 当前没有任何调用点：Logo 图形由 anlogic_logo_rom 子模块给出，本函数属保留代码。
@@ -813,6 +919,15 @@ module hdmi_mixer #(
         S_osd_hit   = 1'b0;  // 组合默认值（全部赋 0，避免综合出锁存器）
         S_osd_color = 24'd0;
         S_logo_addr = 15'd0;
+        // [HDR-2026-10-12k] 第 4 层遥测行的组合默认值
+        S_dbg_x    = 12'd0;
+        S_dbg_y    = 12'd0;
+        S_dbg_idx  = 5'd0;
+        S_dbg_lx   = 4'd0;
+        S_dbg_ly   = 4'd0;
+        S_dbg_gl   = 5'd0;
+        S_dbg_bits = 5'd0;
+        S_dbg_on   = 1'b0;
 
         S_logo_x = 12'd0;
         S_logo_y = 12'd0;
@@ -1131,6 +1246,64 @@ module hdmi_mixer #(
                 if(S_alg_on) begin  // 命中：用亮绿色覆盖（本层最后判定，优先级最高）
                     S_osd_hit   = 1'b1;
                     S_osd_color = COLOR_ALG_TEXT;
+                end
+            end
+
+//------ 第 4 层：橙色遥测行（诊断用，最后判定 = 优先级最高） ------
+            //------------------------------------------------------------------
+            // [HDR-2026-10-12k] 19 字符遥测行 "AExxSxMxxWxxxxBxxxx"
+            //   窗口 (376,152)-(679,161)，与 Logo(0,0)-(159,159)、
+            //   CNT(375,120)-(574,143)、MODE(176,176)-(259,185) 都不重叠。
+            //   ★这一行纯粹是诊断手段：AE/AWB 定案之后可以整块删掉★
+            //------------------------------------------------------------------
+            if((S_x_2d >= DBG_OSD_X) && (S_x_2d < (DBG_OSD_X + DBG_OSD_W)) &&
+               (S_y_2d >= DBG_OSD_Y) && (S_y_2d < (DBG_OSD_Y + DBG_OSD_H))) begin
+                S_dbg_x   = S_x_2d - DBG_OSD_X;
+                S_dbg_y   = S_y_2d - DBG_OSD_Y;
+                S_dbg_idx = S_dbg_x[8:4];   // 第几个字符：字距 16 ⇒ 局部 x/16，0..18
+                S_dbg_lx  = S_dbg_x[3:0];   // 字符内列偏移 0..15（只有 0..4 落在字形上）
+                S_dbg_ly  = S_dbg_y[3:0];   // 行号 0..9（字形只占 0..6）
+
+                case(S_dbg_idx)
+                    5'd0 : S_dbg_gl = 5'd10;                     // 'A'
+                    5'd1 : S_dbg_gl = 5'd14;                     // 'E'
+                    5'd2 : S_dbg_gl = {2'b00, S_dbg_gi[6:4]};    // 增益索引 高位
+                    5'd3 : S_dbg_gl = {1'b0,  S_dbg_gi[3:0]};    // 增益索引 低位
+                    5'd4 : S_dbg_gl = 5'd17;                     // 'S'
+                    5'd5 : S_dbg_gl = {3'b000, S_dbg_st};        // 状态 0..3
+                    5'd6 : S_dbg_gl = 5'd16;                     // 'M'
+                    5'd7 : S_dbg_gl = {1'b0,  S_dbg_ml[7:4]};    // 实测均值 高位
+                    5'd8 : S_dbg_gl = {1'b0,  S_dbg_ml[3:0]};    // 实测均值 低位
+                    5'd9 : S_dbg_gl = 5'd18;                     // 'W'
+                    5'd10: S_dbg_gl = {1'b0,  S_dbg_gr[15:12]};  // R 增益 4 位
+                    5'd11: S_dbg_gl = {1'b0,  S_dbg_gr[11:8]};
+                    5'd12: S_dbg_gl = {1'b0,  S_dbg_gr[7:4]};
+                    5'd13: S_dbg_gl = {1'b0,  S_dbg_gr[3:0]};
+                    5'd14: S_dbg_gl = 5'd11;                     // 'B'
+                    5'd15: S_dbg_gl = {1'b0,  S_dbg_gb[15:12]};  // B 增益 4 位
+                    5'd16: S_dbg_gl = {1'b0,  S_dbg_gb[11:8]};
+                    5'd17: S_dbg_gl = {1'b0,  S_dbg_gb[7:4]};
+                    default: S_dbg_gl = {1'b0, S_dbg_gb[3:0]};
+                endcase
+
+                if(S_dbg_lx < 4'd5) begin   // 字形只有 5 列宽
+                    S_dbg_bits = F_dbg_rowbits(S_dbg_gl, S_dbg_ly[2:0]);
+                    case(S_dbg_lx[2:0])
+                        3'd0: S_dbg_on = S_dbg_bits[4];
+                        3'd1: S_dbg_on = S_dbg_bits[3];
+                        3'd2: S_dbg_on = S_dbg_bits[2];
+                        3'd3: S_dbg_on = S_dbg_bits[1];
+                        3'd4: S_dbg_on = S_dbg_bits[0];
+                        default: S_dbg_on = 1'b0;
+                    endcase
+                end
+                else begin
+                    S_dbg_on = 1'b0;
+                end
+
+                if(S_dbg_on) begin
+                    S_osd_hit   = 1'b1;
+                    S_osd_color = COLOR_DBG_TEXT;
                 end
             end
         end

@@ -51,7 +51,16 @@ module awb  #(
     output                  O_tuser  ,
     output [95:0]           O_tdata  ,
     output                  O_tvalid ,
-    input                   O_tready
+    input                   O_tready ,
+
+    // [HDR-2026-10-12k] 遥测输出：当前生效的 R/B 白平衡增益（20bit Q16，0x10000 = 1.000x）
+    //   为什么要引出来：本模块的增益每一帧都被 I_tuser 复位成 1.000x，之后由 done[0]
+    //   用「本帧到当前行为止的累加比」持续覆盖。屏幕上那点固定偏色到底是
+    //   "增益没算对" 还是 "算对了但没真正作用到像素上"，只有把 in_r_r1 / in_b_r1
+    //   拿出来看才能区分 —— 光看画面永远分不清。
+    //   纯组合直通，不增加任何时序级、不占额外资源。
+    output [19:0]           O_gain_r ,
+    output [19:0]           O_gain_b
 );
 
 /*****************************************************************
@@ -400,6 +409,12 @@ assign  rgb888_b_d0[0] = I_tdata_d0[0+:8];
                        R_new_x1,G_new_x1,B_new_x1}:0;
     // assign O_t_data = {R_new[7-:5],G_new[7-:6],B_new[7-:5]};
     assign  I_tready = O_tready;
+
+    // [HDR-2026-10-12k] 遥测：把真正参与乘法的那两个增益原样送出去，不做任何修饰。
+    //   注意 in_r_r1 是在 done[0] 那一拍更新的，所以它反映的是"最近一次除法器结果"，
+    //   而不是"本帧最终的比值" —— 这正是要看的东西。
+    assign  O_gain_r = in_r_r1;
+    assign  O_gain_b = in_b_r1;
  
 endmodule
 
