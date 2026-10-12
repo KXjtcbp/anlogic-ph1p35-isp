@@ -287,6 +287,9 @@ assign  rgb888_b_d0[3] = I_tdata_d0[72+:8];
 
     reg  [19:0]   in_r_r1;
     reg  [19:0]   in_b_r1;
+    // [HDR-2026-10-12p] 帧锁存后的"本帧实际使用"的增益
+    reg  [19:0]   in_r_hold;
+    reg  [19:0]   in_b_hold;
     always @(posedge I_clk or negedge I_rst_n)begin 
         // [HDR-2026-10-12k] ★★ 复位条件去掉 I_tuser ★★
         //   原写法每帧帧首把 R/B 增益打回 1.000x，再靠 done[0] 用"运行中的部分和"
@@ -294,18 +297,31 @@ assign  rgb888_b_d0[3] = I_tdata_d0[72+:8];
         //   且帧平均的实际校正量小于除法器算出来的值。白平衡是帧间慢变量，
         //   应当跨帧保持并收敛，只在真复位时回 1.000x。
         if(!I_rst_n)begin
-            in_r_r1 <= 20'h10000;
-            in_b_r1 <= 20'h10000;
+            in_r_r1   <= 20'h10000;
+            in_b_r1   <= 20'h10000;
+            in_r_hold <= 20'h10000;
+            in_b_hold <= 20'h10000;
         end
-        else if(done[0])begin
-            if(|in_r_x1[47:20])
-                in_r_r1 <= 20'hfffff;
-            else 
-                in_r_r1 <= in_r_x1[19:0];
-            if(|in_b_x1[47:20])
-                in_b_r1 <= 20'hfffff;
-            else 
-                in_b_r1 <= in_b_x1[19:0];
+        else begin
+            if(done[0])begin
+                if(|in_r_x1[47:20])
+                    in_r_r1 <= 20'hfffff;
+                else 
+                    in_r_r1 <= in_r_x1[19:0];
+                if(|in_b_x1[47:20])
+                    in_b_r1 <= 20'hfffff;
+                else 
+                    in_b_r1 <= in_b_x1[19:0];
+            end
+            // [HDR-2026-10-12p] ★帧锁存★
+            //   I_tuser 是帧首那一拍。此刻 in_r_r1/in_b_r1 里放的正是
+            //   上一帧跑到帧尾时用满累加器算出来的比值 = 真正的整帧灰世界比值。
+            //   把它冻结进 *_hold，整帧所有像素都用这一对常量乘，
+            //   于是增益在帧内恒定、帧间一步到位，不再有"帧首从空累加器起算"的抖动。
+            if(I_tuser)begin
+                in_r_hold <= in_r_r1;
+                in_b_hold <= in_b_r1;
+            end
         end
 //---- kuai 7: di er ci shi-li-hua signal_delay ----
     end
@@ -383,22 +399,22 @@ assign  rgb888_b_d0[3] = I_tdata_d0[72+:8];
             B_new_r4 <= 0;
         end
         else if(valid_d1) begin
-            R_new_r1 <= in_r_r1 * rgb888_r_d1[0];
+            R_new_r1 <= in_r_hold * rgb888_r_d1[0];
             G_new_r1 <=           rgb888_g_d1[0];
-            B_new_r1 <= in_b_r1 * rgb888_b_d1[0];
+            B_new_r1 <= in_b_hold * rgb888_b_d1[0];
 
-            R_new_r2 <= in_r_r1 * rgb888_r_d1[1];
+            R_new_r2 <= in_r_hold * rgb888_r_d1[1];
             G_new_r2 <=           rgb888_g_d1[1];
-            B_new_r2 <= in_b_r1 * rgb888_b_d1[1];
+            B_new_r2 <= in_b_hold * rgb888_b_d1[1];
 //---- kuai 9: zeng-yi cheng-fa (R/B cheng zeng-yi, G bu cheng) + bao-he ----
 
-            R_new_r3 <= in_r_r1 * rgb888_r_d1[2];
+            R_new_r3 <= in_r_hold * rgb888_r_d1[2];
             G_new_r3 <=           rgb888_g_d1[2];
-            B_new_r3 <= in_b_r1 * rgb888_b_d1[2];
+            B_new_r3 <= in_b_hold * rgb888_b_d1[2];
 
-            R_new_r4 <= in_r_r1 * rgb888_r_d1[3];
+            R_new_r4 <= in_r_hold * rgb888_r_d1[3];
             G_new_r4 <=           rgb888_g_d1[3];
-            B_new_r4 <= in_b_r1 * rgb888_b_d1[3];
+            B_new_r4 <= in_b_hold * rgb888_b_d1[3];
         end
     end
 
@@ -466,11 +482,11 @@ assign  rgb888_b_d0[3] = I_tdata_d0[72+:8];
     // assign O_t_data = {R_new[7-:5],G_new[7-:6],B_new[7-:5]};
     assign  I_tready = O_tready;
 
-    // [HDR-2026-10-12k] 遥测：把真正参与乘法的那两个增益原样送出去，不做任何修饰。
-    //   注意 in_r_r1 是在 done[0] 那一拍更新的，所以它反映的是"最近一次除法器结果"，
-    //   而不是"本帧最终的比值" —— 这正是要看的东西。
-    assign  O_gain_r = in_r_r1;
-    assign  O_gain_b = in_b_r1;
+    // [HDR-2026-10-12p] 遥测改成送 in_r_hold / in_b_hold ——
+    //   即"本帧真正乘到每个像素上"的那一对常量（帧边界锁存后的值），
+    //   而不是 done[0] 那一拍的运行比值。这样屏幕上的 W/B 才等于实际施加的增益。
+    assign  O_gain_r = in_r_hold;
+    assign  O_gain_b = in_b_hold;
  
 endmodule
 

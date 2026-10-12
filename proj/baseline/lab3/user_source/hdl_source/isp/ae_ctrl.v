@@ -303,7 +303,17 @@ module ae_ctrl #(
     //    [1] I_ae_cfg_done  [0] I_cam_cfg_done
     //    目的：AE"闭环但增益不动"到底卡在哪个与条件上，看一眼就知道。
     //=========================================================================
-    assign O_dbg2 = { S_gi_inc, S_gi_dec, S_gi_next, S_settle,
-                      S_can_act, S_frame_ok, S_req_pend, I_ae_cfg_done, I_cam_cfg_done };
+    // [HDR-2026-10-12q] ★打一拍再送出去★
+    //   原因：这条总线跨 pll_clk_24m -> HDMI_PIXEL_CLK（约束 set_max_delay 8.000ns）。
+    //   直接由 S_gi_inc/S_gi_dec/S_gi_next/S_settle… 组合驱动时，综合出来是 9 级逻辑、
+    //   7.835ns 数据路径，实测把该路径压到 WNS -29ps（1 条 setup 违例）。
+    //   纯观测信号，加一级寄存器后逻辑深度降到 1~2 级，代价只是 +34 个 FF。
+    reg [33:0] S_dbg2_r;
+    always @(posedge I_clk or negedge I_rst_n) begin
+        if (!I_rst_n) S_dbg2_r <= 34'd0;
+        else          S_dbg2_r <= { S_gi_inc, S_gi_dec, S_gi_next, S_settle,
+                                    S_can_act, S_frame_ok, S_req_pend, I_ae_cfg_done, I_cam_cfg_done };
+    end
+    assign O_dbg2 = S_dbg2_r;
 
 endmodule
