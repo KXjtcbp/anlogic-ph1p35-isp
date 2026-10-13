@@ -287,17 +287,9 @@ assign  rgb888_b_d0[3] = I_tdata_d0[72+:8];
 
     reg  [19:0]   in_r_r1;
     reg  [19:0]   in_b_r1;
-    // [HDR-2026-10-12m] ★ 双缓冲：除法器每拍的结果只写"待用值"，帧边界原子切换 ★
-    //   原写法 done[0] 每拍直接覆盖 in_r_r1 => 每个像素乘的是"运行中的部分和"比值
-    //   （帧首几行≈它们自己的比值，越往后越接近整帧比值）=> 帧平均校正量小于算出来的值，
-    //   空间上表现为上/下段色偏。本机门级仿真证据（tb_awb_live_ratio.v，两 CASE 帧均值同为 80/100/90）：
-    //     CASE A 均匀场                            R/G=1.0000   （看不见缺陷）
-    //     CASE B 前半中性 + 后半偏绿               R/G=0.8293   （复现上板 0.83~0.93 的缺陷）
-    //   改成本缓冲后 CASE B 必须回到 1.0000，否则说明乘法路径本身没把增益施加下去。
-    reg  [19:0]   in_r_nxt;
-    reg  [19:0]   in_b_nxt;
-    reg           gain_nxt_vld;
-    reg           gain_tuser_d;
+    // [HDR-2026-10-12p] 帧锁存后的"本帧实际使用"的增益
+    reg  [19:0]   in_r_hold;
+    reg  [19:0]   in_b_hold;
     always @(posedge I_clk or negedge I_rst_n)begin 
         // [HDR-2026-10-12k] ★★ 复位条件去掉 I_tuser ★★
         //   原写法每帧帧首把 R/B 增益打回 1.000x，再靠 done[0] 用"运行中的部分和"
@@ -305,37 +297,30 @@ assign  rgb888_b_d0[3] = I_tdata_d0[72+:8];
         //   且帧平均的实际校正量小于除法器算出来的值。白平衡是帧间慢变量，
         //   应当跨帧保持并收敛，只在真复位时回 1.000x。
         if(!I_rst_n)begin
-            in_r_r1 <= 20'h10000;
-            in_b_r1 <= 20'h10000;
-            in_r_nxt <= 20'h10000;
-            in_b_nxt <= 20'h10000;
-            gain_nxt_vld <= 1'b0;
-            gain_tuser_d <= 1'b0;
+            in_r_r1   <= 20'h10000;
+            in_b_r1   <= 20'h10000;
+            in_r_hold <= 20'h10000;
+            in_b_hold <= 20'h10000;
         end
         else begin
-            gain_tuser_d <= I_tuser;
-            // (1) 除法器结果先只落"待用值"，不直接上台。
-            //     ★必须排除 I_tuser 期间的 done★：帧首 sum_* 刚被清 0，除法器 0/0 会吐出
-            //     全 1 的商，被 [47:20] 溢出判据钳成 20'hfffff(15.999x)。实测（awb_fix 首版）
-            //     这一条会把 R/B 顶到饱和 255（三个 CASE 全 R/G=2.5500）。
-            if(done[0] && !I_tuser)begin
+            if(done[0])begin
                 if(|in_r_x1[47:20])
-                    in_r_nxt <= 20'hfffff;
+                    in_r_r1 <= 20'hfffff;
                 else 
-                    in_r_nxt <= in_r_x1[19:0];
+                    in_r_r1 <= in_r_x1[19:0];
                 if(|in_b_x1[47:20])
-                    in_b_nxt <= 20'hfffff;
+                    in_b_r1 <= 20'hfffff;
                 else 
-                    in_b_nxt <= in_b_x1[19:0];
-                gain_nxt_vld <= 1'b1;
+                    in_b_r1 <= in_b_x1[19:0];
             end
-            // (2) 帧边界原子切换：整帧所有像素乘同一个数（上一帧的整帧比值）。
-            //     只在 I_tuser 上升沿切一次：tuser 若是多拍电平，电平判据会反复触发，
-            //     把帧首的垃圾商锁进 in_r_r1。
-            if(I_tuser && !gain_tuser_d && gain_nxt_vld)begin
-                in_r_r1 <= in_r_nxt;
-                in_b_r1 <= in_b_nxt;
-                gain_nxt_vld <= 1'b0;
+            // [HDR-2026-10-12p] ★帧锁存★
+            //   I_tuser 是帧首那一拍。此刻 in_r_r1/in_b_r1 里放的正是
+            //   上一帧跑到帧尾时用满累加器算出来的比值 = 真正的整帧灰世界比值。
+            //   把它冻结进 *_hold，整帧所有像素都用这一对常量乘，
+            //   于是增益在帧内恒定、帧间一步到位，不再有"帧首从空累加器起算"的抖动。
+            if(I_tuser)begin
+                in_r_hold <= in_r_r1;
+                in_b_hold <= in_b_r1;
             end
         end
 //---- kuai 7: di er ci shi-li-hua signal_delay ----
@@ -414,22 +399,22 @@ assign  rgb888_b_d0[3] = I_tdata_d0[72+:8];
             B_new_r4 <= 0;
         end
         else if(valid_d1) begin
-            R_new_r1 <= in_r_r1 * rgb888_r_d1[0];
+            R_new_r1 <= in_r_hold * rgb888_r_d1[0];
             G_new_r1 <=           rgb888_g_d1[0];
-            B_new_r1 <= in_b_r1 * rgb888_b_d1[0];
+            B_new_r1 <= in_b_hold * rgb888_b_d1[0];
 
-            R_new_r2 <= in_r_r1 * rgb888_r_d1[1];
+            R_new_r2 <= in_r_hold * rgb888_r_d1[1];
             G_new_r2 <=           rgb888_g_d1[1];
-            B_new_r2 <= in_b_r1 * rgb888_b_d1[1];
+            B_new_r2 <= in_b_hold * rgb888_b_d1[1];
 //---- kuai 9: zeng-yi cheng-fa (R/B cheng zeng-yi, G bu cheng) + bao-he ----
 
-            R_new_r3 <= in_r_r1 * rgb888_r_d1[2];
+            R_new_r3 <= in_r_hold * rgb888_r_d1[2];
             G_new_r3 <=           rgb888_g_d1[2];
-            B_new_r3 <= in_b_r1 * rgb888_b_d1[2];
+            B_new_r3 <= in_b_hold * rgb888_b_d1[2];
 
-            R_new_r4 <= in_r_r1 * rgb888_r_d1[3];
+            R_new_r4 <= in_r_hold * rgb888_r_d1[3];
             G_new_r4 <=           rgb888_g_d1[3];
-            B_new_r4 <= in_b_r1 * rgb888_b_d1[3];
+            B_new_r4 <= in_b_hold * rgb888_b_d1[3];
         end
     end
 
@@ -453,35 +438,21 @@ assign  rgb888_b_d0[3] = I_tdata_d0[72+:8];
     wire [7:0] G_new_x4;
     wire [7:0] B_new_x4;
 
-    // [HDR-2026-10-12m] ★ 二阶：截断 -> 四舍五入 ★
-    //   原写法 (x[27:24])?255:x[23:16] 是直接截断，平均偏低 0.5 码，且**只影响 R/B**
-    //   （G 完全不乘增益）=> 恒定的通道不对称加性偏置。仿真证据（CASE C，均匀场 R=81/G=100/B=91，
-    //   增益 100/81 不能用 16.16 精确表示）：改前 R/G=0.9900，改后应为 1.0000。
-    //   改法 = 加半 LSB 再截断（等价 (x+16'h8000)>>16 后饱和），不动乘法器/除法器数量。
-    wire [8:0] R_rnd1 = {1'b0,R_new_r1[23:16]} + {8'd0,R_new_r1[15]};
-    wire [8:0] B_rnd1 = {1'b0,B_new_r1[23:16]} + {8'd0,B_new_r1[15]};
-    wire [8:0] R_rnd2 = {1'b0,R_new_r2[23:16]} + {8'd0,R_new_r2[15]};
-    wire [8:0] B_rnd2 = {1'b0,B_new_r2[23:16]} + {8'd0,B_new_r2[15]};
-    wire [8:0] R_rnd3 = {1'b0,R_new_r3[23:16]} + {8'd0,R_new_r3[15]};
-    wire [8:0] B_rnd3 = {1'b0,B_new_r3[23:16]} + {8'd0,B_new_r3[15]};
-    wire [8:0] R_rnd4 = {1'b0,R_new_r4[23:16]} + {8'd0,R_new_r4[15]};
-    wire [8:0] B_rnd4 = {1'b0,B_new_r4[23:16]} + {8'd0,B_new_r4[15]};
-
-    assign R_new_x1 = (R_new_r1[27:24] || R_rnd1[8])?8'hFF:R_rnd1[7:0];
+    assign R_new_x1 = (R_new_r1[27:24])?255:R_new_r1[23:16];
     assign G_new_x1 =  G_new_r1;
-    assign B_new_x1 = (B_new_r1[27:24] || B_rnd1[8])?8'hFF:B_rnd1[7:0];
+    assign B_new_x1 = (B_new_r1[27:24])?255:B_new_r1[23:16];
 
-    assign R_new_x2 = (R_new_r2[27:24] || R_rnd2[8])?8'hFF:R_rnd2[7:0];
+    assign R_new_x2 = (R_new_r2[27:24])?255:R_new_r2[23:16];
     assign G_new_x2 =  G_new_r2;
-    assign B_new_x2 = (B_new_r2[27:24] || B_rnd2[8])?8'hFF:B_rnd2[7:0];
+    assign B_new_x2 = (B_new_r2[27:24])?255:B_new_r2[23:16];
 
-    assign R_new_x3 = (R_new_r3[27:24] || R_rnd3[8])?8'hFF:R_rnd3[7:0];
+    assign R_new_x3 = (R_new_r3[27:24])?255:R_new_r3[23:16];
     assign G_new_x3 =  G_new_r3;
-    assign B_new_x3 = (B_new_r3[27:24] || B_rnd3[8])?8'hFF:B_rnd3[7:0];
+    assign B_new_x3 = (B_new_r3[27:24])?255:B_new_r3[23:16];
 
-    assign R_new_x4 = (R_new_r4[27:24] || R_rnd4[8])?8'hFF:R_rnd4[7:0];
+    assign R_new_x4 = (R_new_r4[27:24])?255:R_new_r4[23:16];
     assign G_new_x4 =  G_new_r4;
-    assign B_new_x4 = (B_new_r4[27:24] || B_rnd4[8])?8'hFF:B_rnd4[7:0];
+    assign B_new_x4 = (B_new_r4[27:24])?255:B_new_r4[23:16];
 //---- kuai 10: shu-chu shou-wo / pin-jie (O_tvalid = valid_d2, O_tdata an 4 xiang-su pin-jie) ----
 /*****************************************************************
                            ͬ���ź�                                       
@@ -511,11 +482,11 @@ assign  rgb888_b_d0[3] = I_tdata_d0[72+:8];
     // assign O_t_data = {R_new[7-:5],G_new[7-:6],B_new[7-:5]};
     assign  I_tready = O_tready;
 
-    // [HDR-2026-10-12k] 遥测：把真正参与乘法的那两个增益原样送出去，不做任何修饰。
-    //   注意 in_r_r1 是在 done[0] 那一拍更新的，所以它反映的是"最近一次除法器结果"，
-    //   而不是"本帧最终的比值" —— 这正是要看的东西。
-    assign  O_gain_r = in_r_r1;
-    assign  O_gain_b = in_b_r1;
+    // [HDR-2026-10-12p] 遥测改成送 in_r_hold / in_b_hold ——
+    //   即"本帧真正乘到每个像素上"的那一对常量（帧边界锁存后的值），
+    //   而不是 done[0] 那一拍的运行比值。这样屏幕上的 W/B 才等于实际施加的增益。
+    assign  O_gain_r = in_r_hold;
+    assign  O_gain_b = in_b_hold;
  
 endmodule
 
