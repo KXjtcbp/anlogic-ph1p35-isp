@@ -219,6 +219,41 @@ module tb_lsc;
         chk("CASE5 tuser clears y",  dut.S_y  === 12'd0);
         $display("[CASE 5] tuser 清零 ok");
 
+        // ---------------- CASE 8 双线性插值 F_lerp 参考校验 ----------------
+        // ★2026-10-14 新增★ DUT 的 F_lerp 用 4 项条件移位相加实现 (k1-k0)*f，
+        // 这里用有符号整数乘法搭一套独立参考，两套实现不同源，才抓得到漏项/位宽问题。
+        begin : case8
+            integer ki, fi;
+            reg [9:0] la, lb, lgot;
+            reg signed [15:0] ld, lexp, lprod;
+            for (ki = 0; ki < 14; ki = ki + 1) begin
+                case (ki)
+                    0:  begin la = 10'd0;    lb = 10'd0;    end
+                    1:  begin la = 10'd0;    lb = 10'd1023; end
+                    2:  begin la = 10'd1023; lb = 10'd0;    end
+                    3:  begin la = 10'd100;  lb = 10'd110;  end
+                    4:  begin la = 10'd512;  lb = 10'd512;  end
+                    5:  begin la = 10'd1023; lb = 10'd1023; end
+                    6:  begin la = 10'd1;    lb = 10'd2;    end
+                    7:  begin la = 10'd1000; lb = 10'd1001; end
+                    8:  begin la = 10'd0;    lb = 10'd16;   end
+                    9:  begin la = 10'd64;   lb = 10'd80;   end
+                    10: begin la = 10'd900;  lb = 10'd1000; end
+                    11: begin la = 10'd7;    lb = 10'd8;    end
+                    12: begin la = 10'd0;    lb = 10'd1023; end
+                    default: begin la = 10'd1023; lb = 10'd0; end
+                endcase
+                for (fi = 0; fi < 16; fi = fi + 1) begin
+                    ld    = $signed({6'b000000, lb}) - $signed({6'b000000, la});
+                    lprod = ld * fi;                       // TB 侧用乘法，与 DUT 的移位加法不同源
+                    lexp  = $signed({6'b000000, la}) + (lprod >>> 4);
+                    lgot  = dut.F_lerp(la, lb, fi[3:0]);
+                    chk("CASE8 F_lerp", lgot === lexp[9:0]);
+                end
+            end
+            $display("[CASE 8] F_lerp 224 组参考校验 ok (含端点与负差方向)");
+        end
+
         $display("");
         if (errors == 0) $display("*** ALL PASS, errors=0  (n_chk=%0d) ***", n_chk);
         else             $display("*** FAILED, errors=%0d  (n_chk=%0d) ***", errors, n_chk);
