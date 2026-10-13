@@ -50,7 +50,8 @@ MASK_BOXES = [
 ]
 
 NX, NY = 20, 12          # 横向 20 节点、纵向 12 节点
-K_MAX = 15               # g = 1 + k/64，k 取 0..15 -> 最大 +23.4%
+KQ_MAX = 1023            # g = 1 + kq/1024，kq 取 0..1023；实测色碗最深 ~12%，只用到 ~128
+KQ_BITS = 10             # ★2026-10-14 从 4bit(1/64) 提到 10bit(1/1024)★
 G_MIN = 40               # 只统计足够亮的像素，避免噪声主导比值
 IMG_W, IMG_H = 1920, 1080
 
@@ -111,11 +112,17 @@ def bin_median(rho, ok):
 
 
 def to_k(rho):
-    """rho(=R/G 或 B/G) -> k = round(64*(target/rho - 1))，夹 0..K_MAX。"""
+    """rho(=R/G 或 B/G) -> kq = round(1024*(target/rho - 1))，夹 0..KQ_MAX。
+
+    ★为什么把量化从 1/64 改成 1/1024★
+      1/64 = 1.5625% 的系数台阶会在均匀靶面上画出肉眼可见的方块（2026-10-14
+      首验 L2 实测块边界跳变 2.2%~5.3%）。1/1024 = 0.098%，比人眼在平滑面上
+      的辨别阈值低一个量级，不需要再做双线性插值。
+    """
     target = np.nanmax(rho)
     g_need = target / rho
-    k = np.round(64.0 * (g_need - 1.0))
-    k = np.clip(np.nan_to_num(k, nan=0.0), 0, K_MAX).astype(int)
+    k = np.round(1024.0 * (g_need - 1.0))
+    k = np.clip(np.nan_to_num(k, nan=0.0), 0, KQ_MAX).astype(int)
     return k, target
 
 
@@ -155,8 +162,8 @@ def main():
         print("  y%02d  " % j + " ".join("%2d" % kB[j, i] for i in range(NX)))
 
     # 预测校正后的效果（节点级）
-    corr_r = R2 * (1.0 + kR / 64.0)
-    corr_b = B2 * (1.0 + kB / 64.0)
+    corr_r = R2 * (1.0 + kR / 1024.0)
+    corr_b = B2 * (1.0 + kB / 1024.0)
     pr = np.nanmean(corr_r, axis=0)
     pb = np.nanmean(corr_b, axis=0)
     print("\n=== 预测校正后逐 x 节点 R/G 均值 ===")
@@ -174,21 +181,22 @@ def main():
     lines.append("    // 由 fit_lsc_2d.py 自动生成，请勿手改；改表请重跑脚本")
     lines.append("    // 输入：%s" % ", ".join(os.path.basename(p) for p in paths if os.path.isfile(p)))
     lines.append("    // 网格：水平 %d 节点（S_bx[8:4]，每节点 64 像素）；垂直 %d 节点（S_y[11:6]，每节点 64 行）" % (NX, NY))
-    lines.append("    // 返回 {kR[3:0], kB[3:0]}，g = 1 + k/64，k=0 -> 1.0000x，k=%d -> %.4fx" % (K_MAX, 1.0 + K_MAX / 64.0))
+    lines.append("    // 返回 {kR[9:0], kB[9:0]}，g = 1 + kq/1024，kq=0 -> 1.0000x，kq=%d -> %.4fx" % (KQ_MAX, 1.0 + KQ_MAX / 1024.0))
     lines.append("    // 实测：未校正逐列 R/G 极差 %.4f / B/G 极差 %.4f；节点级预测校正后 %.4f / %.4f"
                  % (np.nanmax(prof_r) - np.nanmin(prof_r), np.nanmax(prof_b) - np.nanmin(prof_b),
                     np.nanmax(pr) - np.nanmin(pr), np.nanmax(pb) - np.nanmin(pb)))
-    lines.append("    function [7:0] F_k2d(input [3:0] iy, input [4:0] ix);")
+    lines.append("    // ★系数分辨率 1/1024 = 0.098%%，单节点台阶远低于人眼阈值，无须插值★")
+    lines.append("    function [19:0] F_k2d(input [3:0] iy, input [4:0] ix);")
     lines.append("        reg [8:0] a;")
     lines.append("        begin")
     lines.append("            a = {iy, ix};")
     lines.append("            case (a)")
     for j in range(NY):
         for i in range(NX):
-            val = (int(kR[j, i]) << 4) | int(kB[j, i])
-            lines.append("                9'd%d : F_k2d = 8'h%02x;   // y=%02d x=%02d  kR=%d kB=%d"
+            val = (int(kR[j, i]) << 10) | int(kB[j, i])
+            lines.append("                9'd%d : F_k2d = 20'h%05x;   // y=%02d x=%02d  kR=%4d kB=%4d"
                          % (j * 32 + i, val, j, i, kR[j, i], kB[j, i]))
-    lines.append("                default: F_k2d = 8'h00;")
+    lines.append("                default: F_k2d = 20'h00000;")
     lines.append("            endcase")
     lines.append("        end")
     lines.append("    endfunction")

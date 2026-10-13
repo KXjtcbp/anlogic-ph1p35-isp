@@ -27,7 +27,7 @@ module tb_lsc;
 
     localparam [11:0] H_BEATS = 12'd320;
     localparam [11:0] V_LINES = 12'd720;
-    localparam [3:0]  K_MAX   = 4'd7;
+    localparam [9:0]  K_MAX   = 10'd1023;
 
     always #5 clk = ~clk;      // 100 MHz 便于观察
 
@@ -42,28 +42,27 @@ module tb_lsc;
         .O_tdata(o_data), .O_tvalid(o_valid), .O_tuser(o_user), .O_tlast(o_last)
     );
 
-    // ---- TB 侧独立参考模型（与 DUT 的 F_apply 同构但不共用代码）----
-    function [9:0] ref_mul(input [7:0] v, input [3:0] k);
+    // ---- TB 侧独立参考模型（与 DUT 的 F_mul/F_apply 同构但不共用代码）----
+    // ★2026-10-14 改：系数 4bit(1/64) -> 10bit(1/1024)★
+    //  DUT 用 10 条显式条件加法；这里刻意改成 for 循环移位累加 —— 两套实现不同源，
+    //  才抓得到 DUT 里某一位漏加/加错。
+    function [17:0] ref_mul(input [7:0] v, input [9:0] kq);
+        integer i;
+        reg [17:0] acc;
         begin
-            case (k)
-                4'd0: ref_mul = 10'd0;
-                4'd1: ref_mul = {2'b00, v};
-                4'd2: ref_mul = {1'b0, v, 1'b0};
-                4'd3: ref_mul = {2'b00, v} + {1'b0, v, 1'b0};
-                4'd4: ref_mul = {v, 2'b00};
-                4'd5: ref_mul = {2'b00, v} + {v, 2'b00};
-                4'd6: ref_mul = {1'b0, v, 1'b0} + {v, 2'b00};
-                default: ref_mul = {2'b00, v} + {1'b0, v, 1'b0} + {v, 2'b00};
-            endcase
+            acc = 18'd0;
+            for (i = 0; i < 10; i = i + 1)
+                if (kq[i]) acc = acc + ({10'd0, v} << i);
+            ref_mul = acc;
         end
     endfunction
 
-    function [7:0] ref_apply(input [7:0] v, input [3:0] k);
-        reg [9:0] p;
-        reg [8:0] s;
+    function [7:0] ref_apply(input [7:0] v, input [9:0] kq);
+        reg [17:0] p;
+        reg [8:0]  s;
         begin
-            p = ref_mul(v, k);              // 函数返回值不能直接做位选，先存下来
-            s = {1'b0, v} + {1'b0, p[9:6]};
+            p = ref_mul(v, kq);             // 函数返回值不能直接做位选，先存下来
+            s = {1'b0, v} + {1'b0, p[17:10]};
             ref_apply = s[8] ? 8'd255 : s[7:0];
         end
     endfunction
@@ -96,11 +95,11 @@ module tb_lsc;
     integer i, k;
     reg [7:0] v0;
     reg [95:0] din, dref;
-    reg [3:0]  kq;
-    reg [3:0]  kqb;
+    reg [9:0]  kq;
+    reg [9:0]  kqb;
     integer    iy, ix;
-    reg [7:0]  kv2;
-    reg [7:0]  kc, ke;
+    reg [19:0] kv2;
+    reg [19:0] kc, ke;
 
     initial begin
         $display("=== tb_lsc start ===");
@@ -178,25 +177,26 @@ module tb_lsc;
         $display("[CASE 3] 逐像素参考模型比对 ok (40 组 x 4 像素)");
 
         // ---------------- CASE 6 饱和 ----------------
-        chk("CASE6 ref_apply(255,7)=255", ref_apply(8'd255, 4'd7) === 8'd255);
-        chk("CASE6 ref_apply(255,0)=255", ref_apply(8'd255, 4'd0) === 8'd255);
-        chk("CASE6 ref_apply(0,7)=0",     ref_apply(8'd0,   4'd7) === 8'd0);
+        chk("CASE6 ref_apply(255,1023)=255", ref_apply(8'd255, 10'd1023) === 8'd255);
+        chk("CASE6 ref_apply(255,0)=255",    ref_apply(8'd255, 10'd0   ) === 8'd255);
+        chk("CASE6 ref_apply(0,1023)=0",     ref_apply(8'd0,   10'd1023) === 8'd0);
+        chk("CASE6 ref_apply(100,0)=100",    ref_apply(8'd100, 10'd0   ) === 8'd100);
         $display("[CASE 6] saturation ok");
 
         // ---------------- CASE 7 表合法性（完整二维表版）----------------
         for (iy = 0; iy < 12; iy = iy + 1)
             for (ix = 0; ix < 20; ix = ix + 1) begin
                 kv2 = dut.F_k2d(iy[3:0], ix[4:0]);
-                chk("CASE7 kR in 0..15", kv2[7:4] <= 4'd15);
-                chk("CASE7 kB in 0..15", kv2[3:0] <= 4'd15);
+                chk("CASE7 kR in 0..1023", kv2[19:10] <= 10'd1023);
+                chk("CASE7 kB in 0..1023", kv2[ 9: 0] <= 10'd1023);
             end
         // 画面中心必须比四角抬得更多（否则表装反了）
         kc = dut.F_k2d(4'd6, 5'd9);
         ke = dut.F_k2d(4'd0, 5'd0);
-        chk("CASE7 center kR > corner kR", kc[7:4] > ke[7:4]);
-        chk("CASE7 center kB > corner kB", kc[3:0] > ke[3:0]);
-        $display("[CASE 7] 二维表范围 0..15 且中心抬得比四角多 ok (center kR=%0d kB=%0d / corner kR=%0d kB=%0d)",
-                 kc[7:4], kc[3:0], ke[7:4], ke[3:0]);
+        chk("CASE7 center kR > corner kR", kc[19:10] > ke[19:10]);
+        chk("CASE7 center kB > corner kB", kc[ 9: 0] > ke[ 9: 0]);
+        $display("[CASE 7] 二维表范围 0..1023 且中心抬得比四角多 ok (center kR=%0d kB=%0d / corner kR=%0d kB=%0d)",
+                 kc[19:10], kc[9:0], ke[19:10], ke[9:0]);
 
         // ---------------- CASE 5 计数器 ----------------
         // 灌满一行（H_BEATS 拍，最后一拍 tlast）后 bx 应回到 0、y 加 1
