@@ -65,65 +65,257 @@ module lsc #(
 //  ★本段由 _analysis/scripts/fit_lsc.py 自动生成，手改会被覆盖★
 //-----------------------------------------------------------------------------
 // ==== LSC_TABLE_BEGIN ====
-    // 由 fit_lsc.py 自动生成（2 张干净靶面平均，二次碗最小二乘 + 圆心搜索）
-    // D = 1 - R/G = +0.0164 +0.0000*u^2 +0.0000*v^2 , u=(x-0)/960, v=(y-0)/540 , R^2=0.9379
-    // 水平 20 节点（每节点 64 像素），垂直 24 节点（每节点 30 行）
-    // g = 1 + k/64；k=0 -> 1.0000x ，k=7 -> 1.1094x
-    function [2:0] F_kh(input [4:0] i);
+    // 由 fit_lsc_2d.py 自动生成，请勿手改；改表请重跑脚本
+    // 输入：N1_232908.png, N2_232918.png, N3_232923.png
+    // 网格：水平 20 节点（S_bx[8:4]，每节点 64 像素）；垂直 12 节点（S_y[11:6]，每节点 64 行）
+    // 返回 {kR[3:0], kB[3:0]}，g = 1 + k/64，k=0 -> 1.0000x，k=15 -> 1.2344x
+    // 实测：未校正逐列 R/G 极差 0.0870 / B/G 极差 0.0661；节点级预测校正后 0.0045 / 0.0067
+    function [7:0] F_k2d(input [3:0] iy, input [4:0] ix);
+        reg [8:0] a;
         begin
-            case (i)
-                5'd0 : F_kh = 3'd2;
-                5'd1 : F_kh = 3'd2;
-                5'd2 : F_kh = 3'd3;
-                5'd3 : F_kh = 3'd4;
-                5'd4 : F_kh = 3'd5;
-                5'd5 : F_kh = 3'd5;
-                5'd6 : F_kh = 3'd5;
-                5'd7 : F_kh = 3'd5;
-                5'd8 : F_kh = 3'd6;
-                5'd9 : F_kh = 3'd6;
-                5'd10: F_kh = 3'd6;
-                5'd11: F_kh = 3'd6;
-                5'd12: F_kh = 3'd5;
-                5'd13: F_kh = 3'd5;
-                5'd14: F_kh = 3'd4;
-                5'd15: F_kh = 3'd3;
-                5'd16: F_kh = 3'd2;
-                5'd17: F_kh = 3'd1;
-                5'd18: F_kh = 3'd0;
-                5'd19: F_kh = 3'd0;
-                default: F_kh = 3'd0;
-            endcase
-        end
-    endfunction
-
-    function [2:0] F_kv(input [4:0] i);
-        begin
-            case (i)
-                5'd0 : F_kv = 3'd0;
-                5'd1 : F_kv = 3'd1;
-                5'd2 : F_kv = 3'd2;
-                5'd3 : F_kv = 3'd1;
-                5'd4 : F_kv = 3'd1;
-                5'd5 : F_kv = 3'd3;
-                5'd6 : F_kv = 3'd3;
-                5'd7 : F_kv = 3'd3;
-                5'd8 : F_kv = 3'd3;
-                5'd9 : F_kv = 3'd3;
-                5'd10: F_kv = 3'd3;
-                5'd11: F_kv = 3'd3;
-                5'd12: F_kv = 3'd4;
-                5'd13: F_kv = 3'd4;
-                5'd14: F_kv = 3'd4;
-                5'd15: F_kv = 3'd4;
-                5'd16: F_kv = 3'd3;
-                5'd17: F_kv = 3'd3;
-                5'd18: F_kv = 3'd3;
-                5'd19: F_kv = 3'd3;
-                5'd20: F_kv = 3'd3;
-                5'd21: F_kv = 3'd3;
-                5'd22: F_kv = 3'd3;
-                default: F_kv = 3'd0;
+            a = {iy, ix};
+            case (a)
+                9'd0 : F_k2d = 8'h00;   // y=00 x=00  kR=0 kB=0
+                9'd1 : F_k2d = 8'h00;   // y=00 x=01  kR=0 kB=0
+                9'd2 : F_k2d = 8'h00;   // y=00 x=02  kR=0 kB=0
+                9'd3 : F_k2d = 8'h44;   // y=00 x=03  kR=4 kB=4
+                9'd4 : F_k2d = 8'h44;   // y=00 x=04  kR=4 kB=4
+                9'd5 : F_k2d = 8'h33;   // y=00 x=05  kR=3 kB=3
+                9'd6 : F_k2d = 8'h43;   // y=00 x=06  kR=4 kB=3
+                9'd7 : F_k2d = 8'h33;   // y=00 x=07  kR=3 kB=3
+                9'd8 : F_k2d = 8'h43;   // y=00 x=08  kR=4 kB=3
+                9'd9 : F_k2d = 8'h43;   // y=00 x=09  kR=4 kB=3
+                9'd10 : F_k2d = 8'h33;   // y=00 x=10  kR=3 kB=3
+                9'd11 : F_k2d = 8'h32;   // y=00 x=11  kR=3 kB=2
+                9'd12 : F_k2d = 8'h32;   // y=00 x=12  kR=3 kB=2
+                9'd13 : F_k2d = 8'h32;   // y=00 x=13  kR=3 kB=2
+                9'd14 : F_k2d = 8'h21;   // y=00 x=14  kR=2 kB=1
+                9'd15 : F_k2d = 8'h21;   // y=00 x=15  kR=2 kB=1
+                9'd16 : F_k2d = 8'h21;   // y=00 x=16  kR=2 kB=1
+                9'd17 : F_k2d = 8'h11;   // y=00 x=17  kR=1 kB=1
+                9'd18 : F_k2d = 8'h10;   // y=00 x=18  kR=1 kB=0
+                9'd19 : F_k2d = 8'h00;   // y=00 x=19  kR=0 kB=0
+                9'd32 : F_k2d = 8'h00;   // y=01 x=00  kR=0 kB=0
+                9'd33 : F_k2d = 8'h00;   // y=01 x=01  kR=0 kB=0
+                9'd34 : F_k2d = 8'h44;   // y=01 x=02  kR=4 kB=4
+                9'd35 : F_k2d = 8'h44;   // y=01 x=03  kR=4 kB=4
+                9'd36 : F_k2d = 8'h44;   // y=01 x=04  kR=4 kB=4
+                9'd37 : F_k2d = 8'h44;   // y=01 x=05  kR=4 kB=4
+                9'd38 : F_k2d = 8'h54;   // y=01 x=06  kR=5 kB=4
+                9'd39 : F_k2d = 8'h54;   // y=01 x=07  kR=5 kB=4
+                9'd40 : F_k2d = 8'h54;   // y=01 x=08  kR=5 kB=4
+                9'd41 : F_k2d = 8'h54;   // y=01 x=09  kR=5 kB=4
+                9'd42 : F_k2d = 8'h53;   // y=01 x=10  kR=5 kB=3
+                9'd43 : F_k2d = 8'h43;   // y=01 x=11  kR=4 kB=3
+                9'd44 : F_k2d = 8'h43;   // y=01 x=12  kR=4 kB=3
+                9'd45 : F_k2d = 8'h43;   // y=01 x=13  kR=4 kB=3
+                9'd46 : F_k2d = 8'h32;   // y=01 x=14  kR=3 kB=2
+                9'd47 : F_k2d = 8'h31;   // y=01 x=15  kR=3 kB=1
+                9'd48 : F_k2d = 8'h22;   // y=01 x=16  kR=2 kB=2
+                9'd49 : F_k2d = 8'h11;   // y=01 x=17  kR=1 kB=1
+                9'd50 : F_k2d = 8'h11;   // y=01 x=18  kR=1 kB=1
+                9'd51 : F_k2d = 8'h01;   // y=01 x=19  kR=0 kB=1
+                9'd64 : F_k2d = 8'h34;   // y=02 x=00  kR=3 kB=4
+                9'd65 : F_k2d = 8'h44;   // y=02 x=01  kR=4 kB=4
+                9'd66 : F_k2d = 8'h44;   // y=02 x=02  kR=4 kB=4
+                9'd67 : F_k2d = 8'h44;   // y=02 x=03  kR=4 kB=4
+                9'd68 : F_k2d = 8'h54;   // y=02 x=04  kR=5 kB=4
+                9'd69 : F_k2d = 8'h44;   // y=02 x=05  kR=4 kB=4
+                9'd70 : F_k2d = 8'h54;   // y=02 x=06  kR=5 kB=4
+                9'd71 : F_k2d = 8'h65;   // y=02 x=07  kR=6 kB=5
+                9'd72 : F_k2d = 8'h64;   // y=02 x=08  kR=6 kB=4
+                9'd73 : F_k2d = 8'h64;   // y=02 x=09  kR=6 kB=4
+                9'd74 : F_k2d = 8'h64;   // y=02 x=10  kR=6 kB=4
+                9'd75 : F_k2d = 8'h64;   // y=02 x=11  kR=6 kB=4
+                9'd76 : F_k2d = 8'h53;   // y=02 x=12  kR=5 kB=3
+                9'd77 : F_k2d = 8'h43;   // y=02 x=13  kR=4 kB=3
+                9'd78 : F_k2d = 8'h43;   // y=02 x=14  kR=4 kB=3
+                9'd79 : F_k2d = 8'h32;   // y=02 x=15  kR=3 kB=2
+                9'd80 : F_k2d = 8'h10;   // y=02 x=16  kR=1 kB=0
+                9'd81 : F_k2d = 8'h10;   // y=02 x=17  kR=1 kB=0
+                9'd82 : F_k2d = 8'h11;   // y=02 x=18  kR=1 kB=1
+                9'd83 : F_k2d = 8'h01;   // y=02 x=19  kR=0 kB=1
+                9'd96 : F_k2d = 8'h33;   // y=03 x=00  kR=3 kB=3
+                9'd97 : F_k2d = 8'h44;   // y=03 x=01  kR=4 kB=4
+                9'd98 : F_k2d = 8'h34;   // y=03 x=02  kR=3 kB=4
+                9'd99 : F_k2d = 8'h44;   // y=03 x=03  kR=4 kB=4
+                9'd100 : F_k2d = 8'h55;   // y=03 x=04  kR=5 kB=5
+                9'd101 : F_k2d = 8'h65;   // y=03 x=05  kR=6 kB=5
+                9'd102 : F_k2d = 8'h65;   // y=03 x=06  kR=6 kB=5
+                9'd103 : F_k2d = 8'h65;   // y=03 x=07  kR=6 kB=5
+                9'd104 : F_k2d = 8'h75;   // y=03 x=08  kR=7 kB=5
+                9'd105 : F_k2d = 8'h75;   // y=03 x=09  kR=7 kB=5
+                9'd106 : F_k2d = 8'h75;   // y=03 x=10  kR=7 kB=5
+                9'd107 : F_k2d = 8'h64;   // y=03 x=11  kR=6 kB=4
+                9'd108 : F_k2d = 8'h64;   // y=03 x=12  kR=6 kB=4
+                9'd109 : F_k2d = 8'h64;   // y=03 x=13  kR=6 kB=4
+                9'd110 : F_k2d = 8'h42;   // y=03 x=14  kR=4 kB=2
+                9'd111 : F_k2d = 8'h42;   // y=03 x=15  kR=4 kB=2
+                9'd112 : F_k2d = 8'h32;   // y=03 x=16  kR=3 kB=2
+                9'd113 : F_k2d = 8'h11;   // y=03 x=17  kR=1 kB=1
+                9'd114 : F_k2d = 8'h11;   // y=03 x=18  kR=1 kB=1
+                9'd115 : F_k2d = 8'h11;   // y=03 x=19  kR=1 kB=1
+                9'd128 : F_k2d = 8'h33;   // y=04 x=00  kR=3 kB=3
+                9'd129 : F_k2d = 8'h34;   // y=04 x=01  kR=3 kB=4
+                9'd130 : F_k2d = 8'h34;   // y=04 x=02  kR=3 kB=4
+                9'd131 : F_k2d = 8'h54;   // y=04 x=03  kR=5 kB=4
+                9'd132 : F_k2d = 8'h65;   // y=04 x=04  kR=6 kB=5
+                9'd133 : F_k2d = 8'h65;   // y=04 x=05  kR=6 kB=5
+                9'd134 : F_k2d = 8'h76;   // y=04 x=06  kR=7 kB=6
+                9'd135 : F_k2d = 8'h75;   // y=04 x=07  kR=7 kB=5
+                9'd136 : F_k2d = 8'h75;   // y=04 x=08  kR=7 kB=5
+                9'd137 : F_k2d = 8'h75;   // y=04 x=09  kR=7 kB=5
+                9'd138 : F_k2d = 8'h75;   // y=04 x=10  kR=7 kB=5
+                9'd139 : F_k2d = 8'h74;   // y=04 x=11  kR=7 kB=4
+                9'd140 : F_k2d = 8'h65;   // y=04 x=12  kR=6 kB=5
+                9'd141 : F_k2d = 8'h64;   // y=04 x=13  kR=6 kB=4
+                9'd142 : F_k2d = 8'h43;   // y=04 x=14  kR=4 kB=3
+                9'd143 : F_k2d = 8'h42;   // y=04 x=15  kR=4 kB=2
+                9'd144 : F_k2d = 8'h22;   // y=04 x=16  kR=2 kB=2
+                9'd145 : F_k2d = 8'h11;   // y=04 x=17  kR=1 kB=1
+                9'd146 : F_k2d = 8'h11;   // y=04 x=18  kR=1 kB=1
+                9'd147 : F_k2d = 8'h00;   // y=04 x=19  kR=0 kB=0
+                9'd160 : F_k2d = 8'h23;   // y=05 x=00  kR=2 kB=3
+                9'd161 : F_k2d = 8'h34;   // y=05 x=01  kR=3 kB=4
+                9'd162 : F_k2d = 8'h34;   // y=05 x=02  kR=3 kB=4
+                9'd163 : F_k2d = 8'h44;   // y=05 x=03  kR=4 kB=4
+                9'd164 : F_k2d = 8'h65;   // y=05 x=04  kR=6 kB=5
+                9'd165 : F_k2d = 8'h65;   // y=05 x=05  kR=6 kB=5
+                9'd166 : F_k2d = 8'h75;   // y=05 x=06  kR=7 kB=5
+                9'd167 : F_k2d = 8'h75;   // y=05 x=07  kR=7 kB=5
+                9'd168 : F_k2d = 8'h86;   // y=05 x=08  kR=8 kB=6
+                9'd169 : F_k2d = 8'h86;   // y=05 x=09  kR=8 kB=6
+                9'd170 : F_k2d = 8'h75;   // y=05 x=10  kR=7 kB=5
+                9'd171 : F_k2d = 8'h75;   // y=05 x=11  kR=7 kB=5
+                9'd172 : F_k2d = 8'h74;   // y=05 x=12  kR=7 kB=4
+                9'd173 : F_k2d = 8'h64;   // y=05 x=13  kR=6 kB=4
+                9'd174 : F_k2d = 8'h53;   // y=05 x=14  kR=5 kB=3
+                9'd175 : F_k2d = 8'h42;   // y=05 x=15  kR=4 kB=2
+                9'd176 : F_k2d = 8'h32;   // y=05 x=16  kR=3 kB=2
+                9'd177 : F_k2d = 8'h11;   // y=05 x=17  kR=1 kB=1
+                9'd178 : F_k2d = 8'h11;   // y=05 x=18  kR=1 kB=1
+                9'd179 : F_k2d = 8'h00;   // y=05 x=19  kR=0 kB=0
+                9'd192 : F_k2d = 8'h33;   // y=06 x=00  kR=3 kB=3
+                9'd193 : F_k2d = 8'h34;   // y=06 x=01  kR=3 kB=4
+                9'd194 : F_k2d = 8'h44;   // y=06 x=02  kR=4 kB=4
+                9'd195 : F_k2d = 8'h54;   // y=06 x=03  kR=5 kB=4
+                9'd196 : F_k2d = 8'h65;   // y=06 x=04  kR=6 kB=5
+                9'd197 : F_k2d = 8'h65;   // y=06 x=05  kR=6 kB=5
+                9'd198 : F_k2d = 8'h76;   // y=06 x=06  kR=7 kB=6
+                9'd199 : F_k2d = 8'h76;   // y=06 x=07  kR=7 kB=6
+                9'd200 : F_k2d = 8'h86;   // y=06 x=08  kR=8 kB=6
+                9'd201 : F_k2d = 8'h86;   // y=06 x=09  kR=8 kB=6
+                9'd202 : F_k2d = 8'h86;   // y=06 x=10  kR=8 kB=6
+                9'd203 : F_k2d = 8'h75;   // y=06 x=11  kR=7 kB=5
+                9'd204 : F_k2d = 8'h74;   // y=06 x=12  kR=7 kB=4
+                9'd205 : F_k2d = 8'h64;   // y=06 x=13  kR=6 kB=4
+                9'd206 : F_k2d = 8'h53;   // y=06 x=14  kR=5 kB=3
+                9'd207 : F_k2d = 8'h42;   // y=06 x=15  kR=4 kB=2
+                9'd208 : F_k2d = 8'h32;   // y=06 x=16  kR=3 kB=2
+                9'd209 : F_k2d = 8'h21;   // y=06 x=17  kR=2 kB=1
+                9'd210 : F_k2d = 8'h11;   // y=06 x=18  kR=1 kB=1
+                9'd211 : F_k2d = 8'h00;   // y=06 x=19  kR=0 kB=0
+                9'd224 : F_k2d = 8'h23;   // y=07 x=00  kR=2 kB=3
+                9'd225 : F_k2d = 8'h34;   // y=07 x=01  kR=3 kB=4
+                9'd226 : F_k2d = 8'h44;   // y=07 x=02  kR=4 kB=4
+                9'd227 : F_k2d = 8'h54;   // y=07 x=03  kR=5 kB=4
+                9'd228 : F_k2d = 8'h65;   // y=07 x=04  kR=6 kB=5
+                9'd229 : F_k2d = 8'h65;   // y=07 x=05  kR=6 kB=5
+                9'd230 : F_k2d = 8'h76;   // y=07 x=06  kR=7 kB=6
+                9'd231 : F_k2d = 8'h75;   // y=07 x=07  kR=7 kB=5
+                9'd232 : F_k2d = 8'h86;   // y=07 x=08  kR=8 kB=6
+                9'd233 : F_k2d = 8'h86;   // y=07 x=09  kR=8 kB=6
+                9'd234 : F_k2d = 8'h86;   // y=07 x=10  kR=8 kB=6
+                9'd235 : F_k2d = 8'h75;   // y=07 x=11  kR=7 kB=5
+                9'd236 : F_k2d = 8'h74;   // y=07 x=12  kR=7 kB=4
+                9'd237 : F_k2d = 8'h64;   // y=07 x=13  kR=6 kB=4
+                9'd238 : F_k2d = 8'h53;   // y=07 x=14  kR=5 kB=3
+                9'd239 : F_k2d = 8'h42;   // y=07 x=15  kR=4 kB=2
+                9'd240 : F_k2d = 8'h32;   // y=07 x=16  kR=3 kB=2
+                9'd241 : F_k2d = 8'h21;   // y=07 x=17  kR=2 kB=1
+                9'd242 : F_k2d = 8'h11;   // y=07 x=18  kR=1 kB=1
+                9'd243 : F_k2d = 8'h00;   // y=07 x=19  kR=0 kB=0
+                9'd256 : F_k2d = 8'h33;   // y=08 x=00  kR=3 kB=3
+                9'd257 : F_k2d = 8'h34;   // y=08 x=01  kR=3 kB=4
+                9'd258 : F_k2d = 8'h44;   // y=08 x=02  kR=4 kB=4
+                9'd259 : F_k2d = 8'h44;   // y=08 x=03  kR=4 kB=4
+                9'd260 : F_k2d = 8'h55;   // y=08 x=04  kR=5 kB=5
+                9'd261 : F_k2d = 8'h65;   // y=08 x=05  kR=6 kB=5
+                9'd262 : F_k2d = 8'h75;   // y=08 x=06  kR=7 kB=5
+                9'd263 : F_k2d = 8'h75;   // y=08 x=07  kR=7 kB=5
+                9'd264 : F_k2d = 8'h75;   // y=08 x=08  kR=7 kB=5
+                9'd265 : F_k2d = 8'h86;   // y=08 x=09  kR=8 kB=6
+                9'd266 : F_k2d = 8'h75;   // y=08 x=10  kR=7 kB=5
+                9'd267 : F_k2d = 8'h74;   // y=08 x=11  kR=7 kB=4
+                9'd268 : F_k2d = 8'h74;   // y=08 x=12  kR=7 kB=4
+                9'd269 : F_k2d = 8'h64;   // y=08 x=13  kR=6 kB=4
+                9'd270 : F_k2d = 8'h53;   // y=08 x=14  kR=5 kB=3
+                9'd271 : F_k2d = 8'h42;   // y=08 x=15  kR=4 kB=2
+                9'd272 : F_k2d = 8'h32;   // y=08 x=16  kR=3 kB=2
+                9'd273 : F_k2d = 8'h21;   // y=08 x=17  kR=2 kB=1
+                9'd274 : F_k2d = 8'h11;   // y=08 x=18  kR=1 kB=1
+                9'd275 : F_k2d = 8'h10;   // y=08 x=19  kR=1 kB=0
+                9'd288 : F_k2d = 8'h33;   // y=09 x=00  kR=3 kB=3
+                9'd289 : F_k2d = 8'h34;   // y=09 x=01  kR=3 kB=4
+                9'd290 : F_k2d = 8'h33;   // y=09 x=02  kR=3 kB=3
+                9'd291 : F_k2d = 8'h44;   // y=09 x=03  kR=4 kB=4
+                9'd292 : F_k2d = 8'h55;   // y=09 x=04  kR=5 kB=5
+                9'd293 : F_k2d = 8'h65;   // y=09 x=05  kR=6 kB=5
+                9'd294 : F_k2d = 8'h65;   // y=09 x=06  kR=6 kB=5
+                9'd295 : F_k2d = 8'h75;   // y=09 x=07  kR=7 kB=5
+                9'd296 : F_k2d = 8'h75;   // y=09 x=08  kR=7 kB=5
+                9'd297 : F_k2d = 8'h75;   // y=09 x=09  kR=7 kB=5
+                9'd298 : F_k2d = 8'h75;   // y=09 x=10  kR=7 kB=5
+                9'd299 : F_k2d = 8'h64;   // y=09 x=11  kR=6 kB=4
+                9'd300 : F_k2d = 8'h64;   // y=09 x=12  kR=6 kB=4
+                9'd301 : F_k2d = 8'h64;   // y=09 x=13  kR=6 kB=4
+                9'd302 : F_k2d = 8'h43;   // y=09 x=14  kR=4 kB=3
+                9'd303 : F_k2d = 8'h42;   // y=09 x=15  kR=4 kB=2
+                9'd304 : F_k2d = 8'h32;   // y=09 x=16  kR=3 kB=2
+                9'd305 : F_k2d = 8'h21;   // y=09 x=17  kR=2 kB=1
+                9'd306 : F_k2d = 8'h11;   // y=09 x=18  kR=1 kB=1
+                9'd307 : F_k2d = 8'h10;   // y=09 x=19  kR=1 kB=0
+                9'd320 : F_k2d = 8'h33;   // y=10 x=00  kR=3 kB=3
+                9'd321 : F_k2d = 8'h34;   // y=10 x=01  kR=3 kB=4
+                9'd322 : F_k2d = 8'h43;   // y=10 x=02  kR=4 kB=3
+                9'd323 : F_k2d = 8'h44;   // y=10 x=03  kR=4 kB=4
+                9'd324 : F_k2d = 8'h54;   // y=10 x=04  kR=5 kB=4
+                9'd325 : F_k2d = 8'h54;   // y=10 x=05  kR=5 kB=4
+                9'd326 : F_k2d = 8'h54;   // y=10 x=06  kR=5 kB=4
+                9'd327 : F_k2d = 8'h64;   // y=10 x=07  kR=6 kB=4
+                9'd328 : F_k2d = 8'h65;   // y=10 x=08  kR=6 kB=5
+                9'd329 : F_k2d = 8'h65;   // y=10 x=09  kR=6 kB=5
+                9'd330 : F_k2d = 8'h64;   // y=10 x=10  kR=6 kB=4
+                9'd331 : F_k2d = 8'h64;   // y=10 x=11  kR=6 kB=4
+                9'd332 : F_k2d = 8'h63;   // y=10 x=12  kR=6 kB=3
+                9'd333 : F_k2d = 8'h53;   // y=10 x=13  kR=5 kB=3
+                9'd334 : F_k2d = 8'h42;   // y=10 x=14  kR=4 kB=2
+                9'd335 : F_k2d = 8'h32;   // y=10 x=15  kR=3 kB=2
+                9'd336 : F_k2d = 8'h32;   // y=10 x=16  kR=3 kB=2
+                9'd337 : F_k2d = 8'h21;   // y=10 x=17  kR=2 kB=1
+                9'd338 : F_k2d = 8'h11;   // y=10 x=18  kR=1 kB=1
+                9'd339 : F_k2d = 8'h10;   // y=10 x=19  kR=1 kB=0
+                9'd352 : F_k2d = 8'h44;   // y=11 x=00  kR=4 kB=4
+                9'd353 : F_k2d = 8'h44;   // y=11 x=01  kR=4 kB=4
+                9'd354 : F_k2d = 8'h34;   // y=11 x=02  kR=3 kB=4
+                9'd355 : F_k2d = 8'h44;   // y=11 x=03  kR=4 kB=4
+                9'd356 : F_k2d = 8'h54;   // y=11 x=04  kR=5 kB=4
+                9'd357 : F_k2d = 8'h54;   // y=11 x=05  kR=5 kB=4
+                9'd358 : F_k2d = 8'h64;   // y=11 x=06  kR=6 kB=4
+                9'd359 : F_k2d = 8'h54;   // y=11 x=07  kR=5 kB=4
+                9'd360 : F_k2d = 8'h64;   // y=11 x=08  kR=6 kB=4
+                9'd361 : F_k2d = 8'h54;   // y=11 x=09  kR=5 kB=4
+                9'd362 : F_k2d = 8'h53;   // y=11 x=10  kR=5 kB=3
+                9'd363 : F_k2d = 8'h53;   // y=11 x=11  kR=5 kB=3
+                9'd364 : F_k2d = 8'h54;   // y=11 x=12  kR=5 kB=4
+                9'd365 : F_k2d = 8'h53;   // y=11 x=13  kR=5 kB=3
+                9'd366 : F_k2d = 8'h42;   // y=11 x=14  kR=4 kB=2
+                9'd367 : F_k2d = 8'h42;   // y=11 x=15  kR=4 kB=2
+                9'd368 : F_k2d = 8'h32;   // y=11 x=16  kR=3 kB=2
+                9'd369 : F_k2d = 8'h21;   // y=11 x=17  kR=2 kB=1
+                9'd370 : F_k2d = 8'h21;   // y=11 x=18  kR=2 kB=1
+                9'd371 : F_k2d = 8'h21;   // y=11 x=19  kR=2 kB=1
+                default: F_k2d = 8'h00;
             endcase
         end
     endfunction
@@ -160,35 +352,41 @@ module lsc #(
         end
     end
 
-    // 节点索引：水平 = bx / 16 = bx[8:4]（0..19）；垂直 = y / 32 = y[9:5]（0..22）
+    // [HDR-2026-10-14] 改成完整二维表：
+    //   水平 = bx / 16 = bx[8:4]（0..19，每节点 64 像素）
+    //   垂直 = y  / 64 = y[11:6]（0..11，每节点 64 行）
     wire [4:0] S_hidx = S_bx[8:4];
-    wire [4:0] S_vidx = (S_y[11:5] > 5'd23) ? 5'd23 : S_y[11:5];
+    wire [3:0] S_vidx = S_y[11:6];
 
     //-----------------------------------------------------------------------------
-    //  分离式取值：k = KH[x] + KV[y]，饱和到 K_MAX
+    //  完整二维取值：kR / kB 各自一张表（不再是 KH[x]+KV[y] 的分离式）
+    //  ★为什么换★：可分离版只吃掉 20% 的碗（实测逐列极差 0.085 -> 0.068），
+    //  二维表有 20x12 = 240 个自由参数，是分离式 43 个的 5.6 倍。
+    //  仍然不引入乘法器 / BRAM：240 项 8bit 常数被 TD 综合成纯 LUT ROM。
     //-----------------------------------------------------------------------------
-    wire [3:0] S_kh   = {1'b0, F_kh(S_hidx)};
-    wire [3:0] S_kv   = {1'b0, F_kv(S_vidx)};
-    wire [4:0] S_ksum = {1'b0, S_kh} + {1'b0, S_kv};
-    wire [3:0] S_k    = (S_ksum > {1'b0, K_MAX}) ? K_MAX : S_ksum[3:0];
+    wire [7:0] S_k2 = F_k2d(S_vidx, S_hidx);
+    wire [3:0] S_kr = S_k2[7:4];
+    wire [3:0] S_kb = S_k2[3:0];
 
 //-----------------------------------------------------------------------------
 //  第 1 级流水：锁存 k 与像素数据
 //-----------------------------------------------------------------------------
-    reg [3:0]  S_k_r;
+    reg [3:0]  S_kr_r, S_kb_r;
     reg [95:0] S_d_r;
     reg        S_v1, S_u1, S_l1;
 
     always @(posedge I_clk or negedge I_rst_n) begin
         if (!I_rst_n) begin
-            S_k_r <= 4'd0;
+            S_kr_r <= 4'd0;
+            S_kb_r <= 4'd0;
             S_d_r <= 96'd0;
             S_v1  <= 1'b0;
             S_u1  <= 1'b0;
             S_l1  <= 1'b0;
         end
         else begin
-            S_k_r <= I_bypass ? 4'd0 : S_k;
+            S_kr_r <= I_bypass ? 4'd0 : S_kr;
+            S_kb_r <= I_bypass ? 4'd0 : S_kb;
             S_d_r <= I_tdata;
             S_v1  <= I_tvalid;
             S_u1  <= I_tuser;
@@ -243,10 +441,10 @@ module lsc #(
     wire [7:0] r2 = S_d_r[71:64], g2 = S_d_r[63:56], b2 = S_d_r[55:48];
     wire [7:0] r3 = S_d_r[95:88], g3 = S_d_r[87:80], b3 = S_d_r[79:72];
 
-    wire [7:0] r0c = F_apply(r0, S_k_r), b0c = F_apply(b0, S_k_r);
-    wire [7:0] r1c = F_apply(r1, S_k_r), b1c = F_apply(b1, S_k_r);
-    wire [7:0] r2c = F_apply(r2, S_k_r), b2c = F_apply(b2, S_k_r);
-    wire [7:0] r3c = F_apply(r3, S_k_r), b3c = F_apply(b3, S_k_r);
+    wire [7:0] r0c = F_apply(r0, S_kr_r), b0c = F_apply(b0, S_kb_r);
+    wire [7:0] r1c = F_apply(r1, S_kr_r), b1c = F_apply(b1, S_kb_r);
+    wire [7:0] r2c = F_apply(r2, S_kr_r), b2c = F_apply(b2, S_kb_r);
+    wire [7:0] r3c = F_apply(r3, S_kr_r), b3c = F_apply(b3, S_kb_r);
 
     always @(posedge I_clk or negedge I_rst_n) begin
         if (!I_rst_n) begin

@@ -7,7 +7,7 @@
 //    CASE 4 延迟必须恰好 2 拍（下游 tvalid/tuser/tlast 与数据同相）
 //    CASE 5 行/列计数器（320 beat 一行、720 行一帧，tlast/tuser 归零）
 //    CASE 6 饱和（v=255, k=7 -> 255，不许回绕）
-//    CASE 7 表本身：KH/KV 都在 0..7，且 k=KH+KV 被 K_MAX 正确夹住
+//    CASE 7 完整二维表：kR/kB 都在 0..15，且画面中心抬得比四角多
 //  本模块不例化任何 IP，不需要 glbl。
 //=============================================================================
 `timescale 1ns / 1ps
@@ -97,6 +97,10 @@ module tb_lsc;
     reg [7:0] v0;
     reg [95:0] din, dref;
     reg [3:0]  kq;
+    reg [3:0]  kqb;
+    integer    iy, ix;
+    reg [7:0]  kv2;
+    reg [7:0]  kc, ke;
 
     initial begin
         $display("=== tb_lsc start ===");
@@ -150,15 +154,16 @@ module tb_lsc;
             @(posedge clk); #1;
             // ★采样时机★ 延迟恰好 2 拍：本拍 S_k_r/S_d_r 装的正是刚灌进去的 beat，
             //   再等一拍 F_apply 的组合结果才被 O_tdata 锁存。早拍或晚拍都会错位。
-            kq = dut.S_k_r;
+            kq  = dut.S_kr_r;
+            kqb = dut.S_kb_r;
             @(posedge clk); #1;
-            dref = pack4(ref_apply(din[23:16], kq), din[15: 8], ref_apply(din[ 7: 0], kq),
-                         ref_apply(din[47:40], kq), din[39:32], ref_apply(din[31:24], kq),
-                         ref_apply(din[71:64], kq), din[63:56], ref_apply(din[55:48], kq),
-                         ref_apply(din[95:88], kq), din[87:80], ref_apply(din[79:72], kq));
+            dref = pack4(ref_apply(din[23:16], kq ), din[15: 8], ref_apply(din[ 7: 0], kqb),
+                         ref_apply(din[47:40], kq ), din[39:32], ref_apply(din[31:24], kqb),
+                         ref_apply(din[71:64], kq ), din[63:56], ref_apply(din[55:48], kqb),
+                         ref_apply(din[95:88], kq ), din[87:80], ref_apply(din[79:72], kqb));
             if (o_data !== dref) begin
                 errors = errors + 1;
-                $display("  [FAIL] CASE3 i=%0d k=%0d dut=%h ref=%h", i, kq, o_data, dref);
+                $display("  [FAIL] CASE3 i=%0d kR=%0d kB=%0d dut=%h ref=%h", i, kq, kqb, o_data, dref);
             end
             n_chk = n_chk + 1;
             // G 通道必须逐位不动
@@ -178,15 +183,20 @@ module tb_lsc;
         chk("CASE6 ref_apply(0,7)=0",     ref_apply(8'd0,   4'd7) === 8'd0);
         $display("[CASE 6] saturation ok");
 
-        // ---------------- CASE 7 表合法性 ----------------
-        for (i = 0; i < 20; i = i + 1)
-            chk("CASE7 KH in 0..7", dut.F_kh(i[4:0]) <= 3'd7);
-        for (i = 0; i < 24; i = i + 1)
-            chk("CASE7 KV in 0..7", dut.F_kv(i[4:0]) <= 3'd7);
-        for (k = 0; k < 8; k = k + 1)
-            chk("CASE7 k clamp", ((({1'b0,dut.F_kh(5'd10)} + {1'b0,dut.F_kv(5'd12)}) > {1'b0,K_MAX})
-                                  ? K_MAX : (dut.F_kh(5'd10)+dut.F_kv(5'd12))) <= K_MAX);
-        $display("[CASE 7] 表范围 0..7 且 k 被夹住 ok");
+        // ---------------- CASE 7 表合法性（完整二维表版）----------------
+        for (iy = 0; iy < 12; iy = iy + 1)
+            for (ix = 0; ix < 20; ix = ix + 1) begin
+                kv2 = dut.F_k2d(iy[3:0], ix[4:0]);
+                chk("CASE7 kR in 0..15", kv2[7:4] <= 4'd15);
+                chk("CASE7 kB in 0..15", kv2[3:0] <= 4'd15);
+            end
+        // 画面中心必须比四角抬得更多（否则表装反了）
+        kc = dut.F_k2d(4'd6, 5'd9);
+        ke = dut.F_k2d(4'd0, 5'd0);
+        chk("CASE7 center kR > corner kR", kc[7:4] > ke[7:4]);
+        chk("CASE7 center kB > corner kB", kc[3:0] > ke[3:0]);
+        $display("[CASE 7] 二维表范围 0..15 且中心抬得比四角多 ok (center kR=%0d kB=%0d / corner kR=%0d kB=%0d)",
+                 kc[7:4], kc[3:0], ke[7:4], ke[3:0]);
 
         // ---------------- CASE 5 计数器 ----------------
         // 灌满一行（H_BEATS 拍，最后一拍 tlast）后 bx 应回到 0、y 加 1
