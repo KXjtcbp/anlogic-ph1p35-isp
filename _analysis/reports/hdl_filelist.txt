@@ -56,3 +56,4 @@ E:\FPGA\proj\baseline\lab3\user_source\hdl_source\isp\demosaic_4x_2_0\blk_mem_ge
 E:\FPGA\proj\baseline\lab3\user_source\hdl_source\isp\isp_gamma.v
 E:\FPGA\proj\baseline\lab3\user_source\hdl_source\isp\ae_stat.v
 E:\FPGA\proj\baseline\lab3\user_source\hdl_source\isp\ae_ctrl.v
+E:\FPGA\proj\baseline\lab3\user_source\hdl_source\isp\lsc.v

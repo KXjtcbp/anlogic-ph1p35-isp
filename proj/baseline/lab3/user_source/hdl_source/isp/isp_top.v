@@ -41,6 +41,8 @@ module isp_top (
     //   复位期间顶层把这两根都拉成 1 ⇒ 上电老行为，绝不会「一上电就变样」。
     input           I_blk_bypass    ,
     input           I_gamma_bypass  ,
+  // [HDR-2026-10-14] LSC（镜头色彩暗角校正）运行期旁路，1 = 直通
+  input           I_lsc_bypass    ,
     //--------------------------------------------------------------------------
     // [HDR-2026-10-12] AE（自动曝光）帧统计输出
     //   全部在本模块 axi4s_video_aclk（= S_csi_rx_clk，60MHz）域；每帧只更新一次、
@@ -194,6 +196,37 @@ data128_96 u_data128_96 (
 );
 
 //------------------------------------------------------------------------------
+// [HDR-2026-10-14] LSC 镜头色彩暗角校正
+//   插在 data128_96 之后、ae_stat / awb 之前，理由：
+//     ① 放在 awb 之前 —— AWB 看到的是已经校平的画面，"整帧 R/G = 1" 这个判据
+//        才有意义；放在 awb 之后会被它的全局增益重新搅混。
+//     ② 放在 ae_stat 之前 —— AE 的帧均值直接取自校正后的画面。
+//   本模块带 2 拍流水，所以下游的 tvalid / tuser / tlast 必须取它延迟后的版本，
+//   否则帧边界会与数据错开 2 拍。
+//------------------------------------------------------------------------------
+wire [95:0] lsc_tdata_96;
+wire        lsc_tvalid, lsc_tuser, lsc_tlast;
+
+lsc #(
+    .LSC_ENABLE(1'b1       ),
+    .H_BEATS   (12'd320    ),
+    .V_LINES   (12'd720    ),
+    .K_MAX     (4'd7       )
+) u_lsc (
+    .I_clk    (axi4s_video_aclk),
+    .I_rst_n  (I_rst_n         ),
+    .I_bypass (I_lsc_bypass    ),
+    .I_tdata  (m_axis_tdata_96 ),
+    .I_tvalid (m_axis_tvalid   ),
+    .I_tuser  (m_axis_tuser    ),
+    .I_tlast  (m_axis_tlast    ),
+    .O_tdata  (lsc_tdata_96    ),
+    .O_tvalid (lsc_tvalid      ),
+    .O_tuser  (lsc_tuser       ),
+    .O_tlast  (lsc_tlast       )
+);
+
+//------------------------------------------------------------------------------
 // [HDR-2026-10-12] AE 帧统计器 —— 与 u_awb 并联挂在同一条 96bit 码流上
 //   挂在 awb 的输入侧（而不是输出侧）：AE 与 AWB 互不耦合。
 //   本模块只读不写数据通路，不产生任何反压（无 I_tready），完全被动监听。
@@ -202,9 +235,9 @@ data128_96 u_data128_96 (
 ae_stat u_ae_stat (
     .I_clk       (axi4s_video_aclk),
     .I_rst_n     (I_rst_n         ),
-    .I_tvalid    (m_axis_tvalid   ),
-    .I_tuser     (m_axis_tuser    ),
-    .I_tdata     (m_axis_tdata_96 ),
+    .I_tvalid    (lsc_tvalid      ),
+    .I_tuser     (lsc_tuser       ),
+    .I_tdata     (lsc_tdata_96    ),
     .O_luma_sum  (O_ae_luma_sum   ),
     .O_pix_cnt   (O_ae_pix_cnt    ),
     .O_hi_cnt    (O_ae_hi_cnt     ),
@@ -218,10 +251,10 @@ awb #(
 ) u_awb (
     .I_clk   (axi4s_video_aclk),
     .I_rst_n (I_rst_n),
-    .I_tlast (m_axis_tlast),
-    .I_tuser (m_axis_tuser),
-    .I_tdata (m_axis_tdata_96),
-    .I_tvalid(m_axis_tvalid),
+    .I_tlast (lsc_tlast    ),
+    .I_tuser (lsc_tuser    ),
+    .I_tdata (lsc_tdata_96 ),
+    .I_tvalid(lsc_tvalid   ),
     .I_tready(m_axis_tready),
     .O_tlast (awb_O_tlast ),
     .O_tuser (awb_O_tuser ),

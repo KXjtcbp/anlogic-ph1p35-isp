@@ -618,6 +618,13 @@ wire [33:0] S_osd_dbg2;   // [HDR-2026-10-12m] 第二行遥测：AE 决策链内
     //--------------------------------------------------------------------------
     localparam [7:0] AE_TARGET_MEAN = 8'd70;
 
+    // [HDR-2026-10-14] LSC 镜头色彩暗角校正使能（0 = 开启校正，1 = 直通）
+    //   用 localparam 而不是拨码开关：四个开关已全部占满，且这一步属于「标定」
+    //   而不是「操作」，现场不需要手动切换；要对比就重综合一版。
+    //   与 AE_TARGET_MEAN 同一种模式。
+    localparam       LSC_BYPASS   = 1'b0;
+    wire             S_lsc_bypass = LSC_BYPASS;
+
     ae_ctrl #(
         .TARGET_MEAN    (AE_TARGET_MEAN),   // ★目标帧均值 ≈70（8bit 线性亮度域）★
         .NOM_PIX        (32'd921600),   // 230400 拍 × 4 像素/拍
@@ -932,7 +939,8 @@ isp_top u_isp_top (
 .I_algo_mode     (S_algo_mode),
 // [HDR-2026-10-10] SW1/SW2 旁路控制（已在 S_csi_rx_clk 域做过 2 级同步）
 .I_blk_bypass    (S_blk_bypass  ),
-.I_gamma_bypass  (S_gamma_bypass),
+.I_gamma_bypass  (S_gamma_bypass),
+        .I_lsc_bypass (S_lsc_bypass ),
 // [HDR-2026-10-12] AE 帧统计输出（60MHz ISP 域，准静态），送下面 u_ae_ctrl
 .O_ae_luma_sum   (S_ae_stat_lsum),
 .O_ae_pix_cnt    (S_ae_stat_pix ),

@@ -1,5 +1,5 @@
 include dirs: ['E:\\FPGA\\proj\\baseline\\lab3\\user_source\\hdl_source\\isp\\demosaic_4x_2_0\\blk_mem_gen_demosaic\\RTL', 'E:\\FPGA\\proj\\baseline\\lab3\\user_source\\hdl_source\\isp\\demosaic_4x_2_0\\blk_mem_gen_zhenghe\\RTL']
-待编译文件数: 42
+待编译文件数: 43
 
 [OK  ] design_top_wrapper.v
 [OK  ] video_in.v
@@ -43,8 +43,9 @@ include dirs: ['E:\\FPGA\\proj\\baseline\\lab3\\user_source\\hdl_source\\isp\\de
 [OK  ] isp\isp_gamma.v
 [OK  ] isp\ae_stat.v
 [OK  ] isp\ae_ctrl.v
+[OK  ] isp\lsc.v
 
-==== 汇总: exit=0 的 41 个 / 失败 1 个 ====
+==== 汇总: exit=0 的 42 个 / 失败 1 个 ====
 
 ---- ph1p35_ddr\ph1p35_324_ddr_wrapper.v ----
 ** Error: E:\FPGA\proj\baseline\lab3\user_source\hdl_source\ph1p35_ddr\ph1p35_324_ddr_wrapper.v(61): (vlog-2730) Undefined variable: 'dhi_clk'.
