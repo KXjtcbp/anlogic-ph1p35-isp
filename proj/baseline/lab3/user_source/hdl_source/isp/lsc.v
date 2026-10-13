@@ -75,20 +75,20 @@ module lsc #(
                 5'd0 : F_kh = 3'd2;
                 5'd1 : F_kh = 3'd2;
                 5'd2 : F_kh = 3'd3;
-                5'd3 : F_kh = 3'd3;
-                5'd4 : F_kh = 3'd3;
-                5'd5 : F_kh = 3'd4;
-                5'd6 : F_kh = 3'd4;
+                5'd3 : F_kh = 3'd4;
+                5'd4 : F_kh = 3'd5;
+                5'd5 : F_kh = 3'd5;
+                5'd6 : F_kh = 3'd5;
                 5'd7 : F_kh = 3'd5;
-                5'd8 : F_kh = 3'd5;
-                5'd9 : F_kh = 3'd5;
-                5'd10: F_kh = 3'd5;
-                5'd11: F_kh = 3'd5;
-                5'd12: F_kh = 3'd4;
-                5'd13: F_kh = 3'd3;
-                5'd14: F_kh = 3'd3;
-                5'd15: F_kh = 3'd2;
-                5'd16: F_kh = 3'd1;
+                5'd8 : F_kh = 3'd6;
+                5'd9 : F_kh = 3'd6;
+                5'd10: F_kh = 3'd6;
+                5'd11: F_kh = 3'd6;
+                5'd12: F_kh = 3'd5;
+                5'd13: F_kh = 3'd5;
+                5'd14: F_kh = 3'd4;
+                5'd15: F_kh = 3'd3;
+                5'd16: F_kh = 3'd2;
                 5'd17: F_kh = 3'd1;
                 5'd18: F_kh = 3'd0;
                 5'd19: F_kh = 3'd0;
@@ -101,29 +101,28 @@ module lsc #(
         begin
             case (i)
                 5'd0 : F_kv = 3'd0;
-                5'd1 : F_kv = 3'd0;
-                5'd2 : F_kv = 3'd0;
+                5'd1 : F_kv = 3'd1;
+                5'd2 : F_kv = 3'd2;
                 5'd3 : F_kv = 3'd1;
                 5'd4 : F_kv = 3'd1;
-                5'd5 : F_kv = 3'd1;
-                5'd6 : F_kv = 3'd1;
-                5'd7 : F_kv = 3'd1;
-                5'd8 : F_kv = 3'd2;
-                5'd9 : F_kv = 3'd2;
-                5'd10: F_kv = 3'd2;
-                5'd11: F_kv = 3'd2;
-                5'd12: F_kv = 3'd2;
-                5'd13: F_kv = 3'd2;
-                5'd14: F_kv = 3'd2;
-                5'd15: F_kv = 3'd2;
-                5'd16: F_kv = 3'd2;
-                5'd17: F_kv = 3'd2;
-                5'd18: F_kv = 3'd2;
-                5'd19: F_kv = 3'd2;
-                5'd20: F_kv = 3'd2;
-                5'd21: F_kv = 3'd1;
-                5'd22: F_kv = 3'd1;
-                5'd23: F_kv = 3'd1;
+                5'd5 : F_kv = 3'd3;
+                5'd6 : F_kv = 3'd3;
+                5'd7 : F_kv = 3'd3;
+                5'd8 : F_kv = 3'd3;
+                5'd9 : F_kv = 3'd3;
+                5'd10: F_kv = 3'd3;
+                5'd11: F_kv = 3'd3;
+                5'd12: F_kv = 3'd4;
+                5'd13: F_kv = 3'd4;
+                5'd14: F_kv = 3'd4;
+                5'd15: F_kv = 3'd4;
+                5'd16: F_kv = 3'd3;
+                5'd17: F_kv = 3'd3;
+                5'd18: F_kv = 3'd3;
+                5'd19: F_kv = 3'd3;
+                5'd20: F_kv = 3'd3;
+                5'd21: F_kv = 3'd3;
+                5'd22: F_kv = 3'd3;
                 default: F_kv = 3'd0;
             endcase
         end
@@ -202,32 +201,35 @@ module lsc #(
 //  用 v 的移位组合代替乘法器 —— 8bit 输入、10bit 结果，全部是 LUT 加法器。
 //  乘数只有 4bit，先拆成"2 的幂"再相加。
 //-----------------------------------------------------------------------------
-    function [9:0] F_mul(input [7:0] v, input [3:0] k);
-        reg [9:0] a, b, c;
+    function [11:0] F_mul(input [7:0] v, input [3:0] k);
+        reg [11:0] a, b, c, d, r;
         begin
-            a = {2'b00, v};                 // v * 1
-            b = {1'b0, v, 1'b0};            // v * 2
-            c = {v, 2'b00};                 // v * 4
-            case (k)
-                4'd0: F_mul = 10'd0;
-                4'd1: F_mul = a;
-                4'd2: F_mul = b;
-                4'd3: F_mul = a + b;
-                4'd4: F_mul = c;
-                4'd5: F_mul = a + c;
-                4'd6: F_mul = b + c;
-                default: F_mul = a + b + c;
-            endcase
+            // [HDR-2026-10-14] 重写：
+            //  a) 位宽 10 -> 12。原写法 p = v*k 最大 7*255 = 1785 > 1023 会回绕，
+            //     回绕后 p[9:6] 反而变小 => v > 146 的像素校正被抹掉（真 bug）。
+            //  b) 支持 k = 0..15（原来是 case 到 7，>7 全按 7 处理），g 上限从 1.1094 提到 1.234。
+            //     k 的每一级仍是 1/64 = 1.56%，量化更细。
+            //  4 个移位项按 k 的 4 个位做条件相加，全是 LUT 加法器，不用乘法器/BRAM。
+            a = {4'b0000, v};               // v * 1
+            b = {3'b000, v, 1'b0};          // v * 2
+            c = {2'b00, v, 2'b00};          // v * 4
+            d = {1'b0, v, 3'b000};          // v * 8
+            r = 12'd0;
+            if (k[0]) r = r + a;
+            if (k[1]) r = r + b;
+            if (k[2]) r = r + c;
+            if (k[3]) r = r + d;
+            F_mul = r;
         end
     endfunction
 
     // g = 1 + k/64  =>  out = v + ((v*k) >> 6)，饱和到 255
     function [7:0] F_apply(input [7:0] v, input [3:0] k);
-        reg [9:0] p;
+        reg [11:0] p;
         reg [8:0] s;
         begin
             p = F_mul(v, k);
-            s = {1'b0, v} + {1'b0, p[9:6]};     // v + p/64
+            s = {1'b0, v} + {1'b0, p[11:6]};    // v + p/64 => g = 1 + k/64（k 到 15）
             F_apply = s[8] ? 8'd255 : s[7:0];
         end
     endfunction

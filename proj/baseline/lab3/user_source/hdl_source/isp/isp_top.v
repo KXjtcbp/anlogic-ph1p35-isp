@@ -211,7 +211,7 @@ lsc #(
     .LSC_ENABLE(1'b1       ),
     .H_BEATS   (12'd320    ),
     .V_LINES   (12'd720    ),
-    .K_MAX     (4'd7       )
+    .K_MAX     (4'd15      )
 ) u_lsc (
     .I_clk    (axi4s_video_aclk),
     .I_rst_n  (I_rst_n         ),
