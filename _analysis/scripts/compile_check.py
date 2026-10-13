@@ -52,8 +52,25 @@ print("FILELIST =", FILELIST)
 if not os.path.isfile(FILELIST):
     sys.exit("文件清单不存在：%s\n（请确认 REPO 推断是否正确，或用 python compile_check.py <仓库根> 显式指定）" % FILELIST)
 
-files = [l.strip() for l in open(FILELIST, encoding="utf-8-sig")
-         if l.strip().endswith((".v", ".sv")) and ".enc." not in l]
+def _reroot(p):
+    """清单里可能写着别的机器上的绝对路径（hdl_filelist.txt 里就是 E:\\FPGA\\...）。
+    原路径存在就照用；不存在就按仓库内的相对后缀重新定位到本机仓库根。"""
+    if os.path.isfile(p):
+        return p
+    norm = p.replace("\\", "/")
+    for anchor in ("/proj/", "/_analysis/", "/tools/"):
+        i = norm.find(anchor)
+        if i >= 0:
+            cand = os.path.join(REPO, *norm[i + 1:].split("/"))
+            if os.path.isfile(cand):
+                return cand
+    return p
+
+
+_raw = [l.strip() for l in open(FILELIST, encoding="utf-8-sig")
+        if l.strip().endswith((".v", ".sv")) and ".enc." not in l]
+files = [_reroot(p) for p in _raw]
+_rerooted = [(p, q) for p, q in zip(_raw, files) if p != q]
 
 incdirs = sorted({os.path.dirname(p) for p in
                   glob.glob(os.path.join(HDL, "**", "blk_mem_gen_*", "RTL", "include"),
@@ -72,6 +89,9 @@ for d in incdirs:
 out, fails, ok = [], [], 0
 out.append("include dirs: " + repr(incdirs))
 out.append(f"待编译文件数: {len(files)}\n")
+if _rerooted:
+    out.append(f"路径重定位 {len(_rerooted)} 个（清单里的绝对路径在本机不存在），"
+               f"例如 {_rerooted[0][0]} -> {_rerooted[0][1]}\n")
 
 for f in files:
     r = subprocess.run([VLOG, "-quiet", "-sv", *inc_args, "-work", "work", f],

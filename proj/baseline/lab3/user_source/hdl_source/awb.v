@@ -438,21 +438,38 @@ assign  rgb888_b_d0[3] = I_tdata_d0[72+:8];
     wire [7:0] G_new_x4;
     wire [7:0] B_new_x4;
 
-    assign R_new_x1 = (R_new_r1[27:24])?255:R_new_r1[23:16];
+    // [HDR-2026-10-13a] ★输出端四舍五入 (c)★
+    //   原写法 (x[27:24])?255:x[23:16] 是"直接截断"：每个像素单独丢掉低 16 bit，
+    //   向下取整，平均每像素少 0.5 码；而且只作用在 R/B 两路 —— G 走 G_new_rN
+    //   直通、完全不乘增益 —— 于是产生一个与场景亮度、与增益大小都无关的
+    //   "只压 R 和 B、不压 G"的加性偏置。门级实测（tb_awb_live_ratio_2f_t1.v）：
+    //   CASE A 均匀 80/100/90，截断版 B/G=0.9900，加舍入后 B/G=1.0000。
+    //   等价于先 (x + 0x8000) 再 >>16 然后饱和，但只多一个 9 bit 加法器，
+    //   不新增乘法器/除法器（HISTORY 第 2 条：本芯片只有 40 个 DSP）。
+    wire [8:0] R_rnd1 = {1'b0,R_new_r1[23:16]} + {8'd0,R_new_r1[15]};
+    wire [8:0] B_rnd1 = {1'b0,B_new_r1[23:16]} + {8'd0,B_new_r1[15]};
+    wire [8:0] R_rnd2 = {1'b0,R_new_r2[23:16]} + {8'd0,R_new_r2[15]};
+    wire [8:0] B_rnd2 = {1'b0,B_new_r2[23:16]} + {8'd0,B_new_r2[15]};
+    wire [8:0] R_rnd3 = {1'b0,R_new_r3[23:16]} + {8'd0,R_new_r3[15]};
+    wire [8:0] B_rnd3 = {1'b0,B_new_r3[23:16]} + {8'd0,B_new_r3[15]};
+    wire [8:0] R_rnd4 = {1'b0,R_new_r4[23:16]} + {8'd0,R_new_r4[15]};
+    wire [8:0] B_rnd4 = {1'b0,B_new_r4[23:16]} + {8'd0,B_new_r4[15]};
+
+    assign R_new_x1 = (R_new_r1[27:24] || R_rnd1[8])?255:R_rnd1[7:0];
     assign G_new_x1 =  G_new_r1;
-    assign B_new_x1 = (B_new_r1[27:24])?255:B_new_r1[23:16];
+    assign B_new_x1 = (B_new_r1[27:24] || B_rnd1[8])?255:B_rnd1[7:0];
 
-    assign R_new_x2 = (R_new_r2[27:24])?255:R_new_r2[23:16];
+    assign R_new_x2 = (R_new_r2[27:24] || R_rnd2[8])?255:R_rnd2[7:0];
     assign G_new_x2 =  G_new_r2;
-    assign B_new_x2 = (B_new_r2[27:24])?255:B_new_r2[23:16];
+    assign B_new_x2 = (B_new_r2[27:24] || B_rnd2[8])?255:B_rnd2[7:0];
 
-    assign R_new_x3 = (R_new_r3[27:24])?255:R_new_r3[23:16];
+    assign R_new_x3 = (R_new_r3[27:24] || R_rnd3[8])?255:R_rnd3[7:0];
     assign G_new_x3 =  G_new_r3;
-    assign B_new_x3 = (B_new_r3[27:24])?255:B_new_r3[23:16];
+    assign B_new_x3 = (B_new_r3[27:24] || B_rnd3[8])?255:B_rnd3[7:0];
 
-    assign R_new_x4 = (R_new_r4[27:24])?255:R_new_r4[23:16];
+    assign R_new_x4 = (R_new_r4[27:24] || R_rnd4[8])?255:R_rnd4[7:0];
     assign G_new_x4 =  G_new_r4;
-    assign B_new_x4 = (B_new_r4[27:24])?255:B_new_r4[23:16];
+    assign B_new_x4 = (B_new_r4[27:24] || B_rnd4[8])?255:B_rnd4[7:0];
 //---- kuai 10: shu-chu shou-wo / pin-jie (O_tvalid = valid_d2, O_tdata an 4 xiang-su pin-jie) ----
 /*****************************************************************
                            ͬ���ź�                                       
