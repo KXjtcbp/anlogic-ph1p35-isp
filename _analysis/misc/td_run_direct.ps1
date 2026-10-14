@@ -20,8 +20,15 @@
 #
 $ErrorActionPreference = 'Continue'
 
+# NOTE 5 -- we run a LOCAL COPY of the flow script, not TD's install copy.
+#   TD's DefaultFlow.tcl calls insert_debugger inside BOTH opt_rtl_fun (syn_1)
+#   and opt_place_fun (phy_1), and setup_debugger inside bitgen_fun.  With no
+#   argument insert_debugger ALWAYS builds a ChipWatcher hub, and that hub costs
+#   ~1822 slices + 9 ERAM + ~4.9k FF (it is the biggest single block in the
+#   design).  Deleting <run>/cw/ does NOT help: TD regenerates cw/ during phy.
+#   DefaultFlow_noCWC.tcl is the same file with those three blocks removed.
 $eng  = 'E:/TD/bin/td_commands_prompt.exe'
-$flow = 'E:/TD/doc/scripts/DefaultFlow.tcl'
+$flow = 'E:/FPGA/_analysis/misc/DefaultFlow_noCWC.tcl'
 $base = 'E:/FPGA/proj/baseline/lab3/td_project/camera_to_dsi_display_Runs'
 $runs = if ($args.Count -gt 0) { $args } else { @('syn_1', 'phy_1') }
 
