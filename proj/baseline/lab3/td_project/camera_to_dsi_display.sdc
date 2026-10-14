@@ -46,13 +46,3 @@ set_max_delay -datapath_only -from [get_clocks {pll_clk_24m}] -to [get_clocks {H
 # ============================================================
 set_max_delay -datapath_only -from [get_clocks {MIPI_RX_BYTE_CLK}] -to [get_clocks {pll_clk_24m}] 20.000
 
-# [HDR-2026-10-14] ChipWatcher 调试中枢的跨域路径 -------------------------------------------------
-# 失败路径实测：
-#   Begin : debug_hub_top/U_0_register/ip_ctrl_reg[35]_syn_2.clk  (clock config_inst.cwc_tck_o, 100ns = JTAG)
-#   End   : debug_hub_top/slave_0_control_reg[32]_syn_2.imb       (clock MIPI_RX_BYTE_CLK, 16.668ns)
-#   Data Path Delay 1.167ns (cell 0.215ns 18% / net 0.952ns 82%), Logic Level 0
-# 路径两头都在 TD 自己生成的 debug_hub_top 里，中间没有任何逻辑 (Logic Level 0)，
-# 纯布线 + 时钟偏移；JTAG TCK 与像素时钟本来就异步，这是调试基础设施的内部握手，
-# 不是功能路径。不声明 false path 时它会随机占据整机唯一一个失败端点
-# （2026-10-14 22:43 那轮：Setup WNS -231ps / S-EP 1，其余路径全正）。
-set_false_path -from [get_clocks {config_inst.cwc_tck_o}]
