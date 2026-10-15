@@ -1424,19 +1424,28 @@ module hdmi_mixer #(
         // ---- [HDR-2026-10-15] 第 5 层：运动块边界描边（最低优先级，不遮遥测文字）----
         //   块网格 16x9、块尺寸 80x80，与 motion_detect.v 的 BEATS_PER_BLK=20*4px 对齐。
         //   块索引 = 15+8 个比较器求和；块内偏移用 bx*80=(bx<<6)+(bx<<4) 还原 => 零除法器。
-        S_mot_bx = (S_x_2d>=12'd80 )+(S_x_2d>=12'd160)+(S_x_2d>=12'd240)+
-                   (S_x_2d>=12'd320)+(S_x_2d>=12'd400)+(S_x_2d>=12'd480)+
-                   (S_x_2d>=12'd560)+(S_x_2d>=12'd640)+(S_x_2d>=12'd720)+
-                   (S_x_2d>=12'd800)+(S_x_2d>=12'd880)+(S_x_2d>=12'd960)+
-                   (S_x_2d>=12'd1040)+(S_x_2d>=12'd1120)+(S_x_2d>=12'd1200);
-        S_mot_by = (S_y_2d>=12'd80 )+(S_y_2d>=12'd160)+(S_y_2d>=12'd240)+
-                   (S_y_2d>=12'd320)+(S_y_2d>=12'd400)+(S_y_2d>=12'd480)+
-                   (S_y_2d>=12'd560)+(S_y_2d>=12'd640);
-        S_mot_xoff = S_x_2d - {S_mot_bx, 6'b0} - {1'b0, S_mot_bx, 4'b0};
-        S_mot_yoff = S_y_2d - {S_mot_by, 6'b0} - {2'b0, S_mot_by, 4'b0};
-        S_mot_on   = I_mot_mask[{S_mot_by, S_mot_bx}] &&
-                     ( (S_mot_xoff < 12'd2) || (S_mot_xoff > 12'd77) ||
-                       (S_mot_yoff < 12'd2) || (S_mot_yoff > 12'd77) );
+        // 块索引：每一项显式补零到目标位宽，避免 Verilog 把 1bit 加法链按 1bit 计算
+        S_mot_bx = 5'd0
+                 + {4'b0,(S_x_2d>=12'd80 )} + {4'b0,(S_x_2d>=12'd160)}
+                 + {4'b0,(S_x_2d>=12'd240)} + {4'b0,(S_x_2d>=12'd320)}
+                 + {4'b0,(S_x_2d>=12'd400)} + {4'b0,(S_x_2d>=12'd480)}
+                 + {4'b0,(S_x_2d>=12'd560)} + {4'b0,(S_x_2d>=12'd640)}
+                 + {4'b0,(S_x_2d>=12'd720)} + {4'b0,(S_x_2d>=12'd800)}
+                 + {4'b0,(S_x_2d>=12'd880)} + {4'b0,(S_x_2d>=12'd960)}
+                 + {4'b0,(S_x_2d>=12'd1040)}+ {4'b0,(S_x_2d>=12'd1120)}
+                 + {4'b0,(S_x_2d>=12'd1200)};
+        S_mot_by = 4'd0
+                 + {3'b0,(S_y_2d>=12'd80 )} + {3'b0,(S_y_2d>=12'd160)}
+                 + {3'b0,(S_y_2d>=12'd240)} + {3'b0,(S_y_2d>=12'd320)}
+                 + {3'b0,(S_y_2d>=12'd400)} + {3'b0,(S_y_2d>=12'd480)}
+                 + {3'b0,(S_y_2d>=12'd560)} + {3'b0,(S_y_2d>=12'd640)};
+        // 块内偏移：bx*80 = (bx<<6)+(bx<<4)，无除法器
+        S_mot_xoff = S_x_2d - {S_mot_bx, 6'b0} - {{1'b0, S_mot_bx}, 4'b0};
+        S_mot_yoff = S_y_2d - {S_mot_by, 6'b0} - {1'b0, S_mot_by, 4'b0};
+        // 掩码布局是 idx = by*16 + bx（见 motion_detect.v），bx 取低 4 位
+        S_mot_on   = I_mot_mask[{1'b0, S_mot_by, S_mot_bx[3:0]}] &&
+                     ( (S_mot_xoff < 12'd3) || (S_mot_xoff > 12'd76) ||
+                       (S_mot_yoff < 12'd3) || (S_mot_yoff > 12'd76) );
         if(S_mot_on) begin
             S_osd_hit   = 1'b1;
             S_osd_color = COLOR_MOT_TEXT;
