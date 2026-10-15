@@ -83,6 +83,9 @@ module hdmi_mixer #(
     //   最慢 16.7ms 才变一次，远慢于像素时钟 ⇒ 内部 2 级 FF 同步即可，不需要握手。
     input wire [48:0] I_dbg_vals,
     input wire [33:0] I_dbg2_vals,       // [HDR-2026-10-12m] 第二行遥测：AE 决策内部量
+    // [HDR-2026-10-15] 运动检测 OSD：16 列 x 9 行块掩码 + 计数
+    input wire [143:0] I_mot_mask,
+    input wire [7:0]   I_mot_cnt,
 
     output wire       O_video_rd_en,  // DDR 读请求使能：直接跟随 I_video_de
     input wire[23:0]  I_video_rd_data,  // DDR 读回的 24bit 像素（RGB888），进入 2 拍流水后参与叠加
@@ -250,6 +253,7 @@ module hdmi_mixer #(
     localparam DBG_OSD_W      = 12'd304;   // 19 字符 x 16 字距
     localparam DBG_OSD_H      = 12'd10;    // 字形 7 行，窗口留 10
     localparam COLOR_DBG_TEXT = 24'hff8000; // 橙色
+    localparam COLOR_MOT_TEXT = 24'hff2020; // 运动块描边红
 
     reg [48:0] S_dbg_1d;   // 遥测总线 2 级同步（准静态信号，无需握手）
     reg [48:0] S_dbg_2d;
@@ -310,6 +314,13 @@ module hdmi_mixer #(
     reg [4:0]  S_dbg_gl;
     reg [4:0]  S_dbg_bits;
     reg        S_dbg_on;
+    
+    // [HDR-2026-10-15] 运动块描边：块索引与块内偏移，全组合、零除法器
+    reg  [4:0]  S_mot_bx;
+    reg  [3:0]  S_mot_by;
+    reg  [11:0] S_mot_xoff;
+    reg  [11:0] S_mot_yoff;
+    reg         S_mot_on;
 
     // 遥测行专用字形库：0..9 = '0'..'9'，10..15 = 'A'..'F'，16='M' 17='S' 18='W'，
     //   其余（含空格）= 全 0。
@@ -1408,6 +1419,27 @@ module hdmi_mixer #(
                     S_osd_color = COLOR_DBG_TEXT;
                 end
             end
+        end
+
+        // ---- [HDR-2026-10-15] 第 5 层：运动块边界描边（最低优先级，不遮遥测文字）----
+        //   块网格 16x9、块尺寸 80x80，与 motion_detect.v 的 BEATS_PER_BLK=20*4px 对齐。
+        //   块索引 = 15+8 个比较器求和；块内偏移用 bx*80=(bx<<6)+(bx<<4) 还原 => 零除法器。
+        S_mot_bx = (S_x_2d>=12'd80 )+(S_x_2d>=12'd160)+(S_x_2d>=12'd240)+
+                   (S_x_2d>=12'd320)+(S_x_2d>=12'd400)+(S_x_2d>=12'd480)+
+                   (S_x_2d>=12'd560)+(S_x_2d>=12'd640)+(S_x_2d>=12'd720)+
+                   (S_x_2d>=12'd800)+(S_x_2d>=12'd880)+(S_x_2d>=12'd960)+
+                   (S_x_2d>=12'd1040)+(S_x_2d>=12'd1120)+(S_x_2d>=12'd1200);
+        S_mot_by = (S_y_2d>=12'd80 )+(S_y_2d>=12'd160)+(S_y_2d>=12'd240)+
+                   (S_y_2d>=12'd320)+(S_y_2d>=12'd400)+(S_y_2d>=12'd480)+
+                   (S_y_2d>=12'd560)+(S_y_2d>=12'd640);
+        S_mot_xoff = S_x_2d - {S_mot_bx, 6'b0} - {1'b0, S_mot_bx, 4'b0};
+        S_mot_yoff = S_y_2d - {S_mot_by, 6'b0} - {2'b0, S_mot_by, 4'b0};
+        S_mot_on   = I_mot_mask[{S_mot_by, S_mot_bx}] &&
+                     ( (S_mot_xoff < 12'd2) || (S_mot_xoff > 12'd77) ||
+                       (S_mot_yoff < 12'd2) || (S_mot_yoff > 12'd77) );
+        if(S_mot_on) begin
+            S_osd_hit   = 1'b1;
+            S_osd_color = COLOR_MOT_TEXT;
         end
     end
 

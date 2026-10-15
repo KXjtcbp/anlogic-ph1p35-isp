@@ -107,7 +107,7 @@
                     <Attr Name="CompileOrder" Val="56"/>
                 </FileInfo>
             </File>
-                        <File Path="../user_source/hdl_source/isp/lsc.v">
+            <File Path="../user_source/hdl_source/isp/lsc.v">
                 <FileInfo>
                     <Attr Name="UsedInSyn" Val="true"/>
                     <Attr Name="UsedInP&R" Val="true"/>
@@ -123,7 +123,15 @@
                     <Attr Name="CompileOrder" Val="58"/>
                 </FileInfo>
             </File>
-<File Path="../user_source/hdl_source/isp/raw10_unpacket_2lane.v">
+            <File Path="../user_source/hdl_source/isp/motion_detect.v">
+                <FileInfo>
+                    <Attr Name="UsedInSyn" Val="true"/>
+                    <Attr Name="UsedInP&R" Val="true"/>
+                    <Attr Name="BelongTo" Val="design_1"/>
+                    <Attr Name="CompileOrder" Val="59"/>
+                </FileInfo>
+            </File>
+            <File Path="../user_source/hdl_source/isp/raw10_unpacket_2lane.v">
                 <FileInfo>
                     <Attr Name="UsedInSyn" Val="true"/>
                     <Attr Name="UsedInP&R" Val="true"/>
@@ -470,6 +478,7 @@
             </File>
             <File Path="../user_source/ip_source/divider/divider.ipc">
                 <FileInfo>
+                    <Attr Name="AutoExcluded" Val="true"/>
                     <Attr Name="UsedInSyn" Val="true"/>
                     <Attr Name="UsedInP&R" Val="true"/>
                     <Attr Name="BelongTo" Val="design_1"/>

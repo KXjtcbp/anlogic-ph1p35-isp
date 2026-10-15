@@ -67,7 +67,13 @@ module isp_top (
     //     屏幕上 R/G <1.0 而 O_gain_r ≈ 0x1240（已经在补偿） ⇒ 偏色在 AWB 之后。
     //--------------------------------------------------------------------------
     output [19:0]   O_wb_gain_r     ,
-    output [19:0]   O_wb_gain_b
+    output [19:0]   O_wb_gain_b     ,
+// [HDR-2026-10-15b] ★运动目标检测（帧差法）输出★
+//   144 个运动块位图（16 列 x 9 行，每块 80x80 像素，bit 序号 = row*16+col）
+//   + 本帧运动块计数。由 hdmi_mixer 的 OSD 层读走画框。
+output [143:0]  O_mot_mask      ,
+output [7:0]    O_mot_cnt       ,
+output          O_mot_any       
 );
  
 wire         m_axis_tvalid;  //synthesis keep 
@@ -316,7 +322,36 @@ awb #(
         .I_mode     ( I_algo_mode      )
     );
 
-    data_96bit_to_128bit u_data_96bit_to_128bit(
+    // [HDR-2026-10-15b] ★运动目标检测（帧差法）★
+//   插在 my_algo 之后、data_96bit_to_128bit 之前，只旁路监听 96bit 像素流，
+//   不改动主通路（无握手端口，纯观察者）。
+//   原理：把画面划成 16x9 = 144 个 80x80 的块，逐帧算块均值；
+//         与上一帧的块均值做绝对差，超阈值且块亮度高于下限则判为运动块；
+//         STRICT2=1 时要求连续两帧都动，抑制噪声与单帧闪烁。
+motion_detect #(
+    .H_BEATS       (12'd320),
+    .V_LINES       (12'd720),
+    .BEATS_PER_BLK (5'd20),
+    .LINES_PER_BLK (7'd80),
+    .DIFF_TH       (8'd10),
+    .FLOOR_TH      (8'd6),
+    .STRICT2       (1'b1)
+) u_motion_detect (
+    .I_clk      (axi4s_video_aclk),
+    .I_rst_n    (I_rst_n),
+    .I_bypass   (1'b0),
+    .I_tdata    (algo_O_tdata),
+    .I_tvalid   (algo_O_tvalid),
+    .I_tuser    (algo_O_tuser),
+    .I_tlast    (algo_O_tlast),
+    .O_blk_mask (O_mot_mask),
+    .O_blk_cnt  (O_mot_cnt),
+    .O_motion_any(O_mot_any),
+    .O_dbg_cur  (),
+    .O_dbg_prev ()
+);
+
+data_96bit_to_128bit u_data_96bit_to_128bit(
         .I_clk              ( axi4s_video_aclk  ),
         .I_rst_n            ( I_rst_n           ),
 	

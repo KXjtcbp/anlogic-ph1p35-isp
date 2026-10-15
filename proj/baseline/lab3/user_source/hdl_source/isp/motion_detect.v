@@ -82,13 +82,11 @@ module motion_detect #(
             S_y    <= 12'd0;
             S_bxc  <= 5'd0;
             S_bcnt <= 5'd0;
-            S_byc  <= 4'd0;
         end else if (I_tuser) begin
             S_bx   <= 12'd0;
             S_y    <= 12'd0;
             S_bxc  <= 5'd0;
             S_bcnt <= 5'd0;
-            S_byc  <= 4'd0;
             S_lyc  <= 7'd0;
         end else if (S_line_end) begin
             S_bx   <= 12'd0;
@@ -105,8 +103,17 @@ module motion_detect #(
                 S_bcnt <= S_bcnt + 5'd1;
             end
         end
-        // 块行计数：与 S_update 同拍推进
-        if (S_update) S_byc <= (S_byc == 4'd8) ? 4'd0 : (S_byc + 4'd1);
+    end
+
+    // [HDR-2026-10-15c] S_byc 从上面那个 always 块里拆出来单独成块。
+    //   TD 对上面那种「先 if/else 链、再跟一条独立 if」的写法报
+    //   HDL-8007 ERROR: if-condition does not match any sensitivity list edge
+    //   （syn_1 因此拒绝执行，phy_1 拿着旧库照跑，产出的是上一版的 bit）。
+    //   拆成独立块后每个 reg 只由唯一一个 always 块驱动，TD 接受。
+    always @(posedge I_clk or negedge I_rst_n) begin
+        if (!I_rst_n)      S_byc <= 4'd0;
+        else if (I_tuser)  S_byc <= 4'd0;
+        else if (S_update) S_byc <= (S_byc == 4'd8) ? 4'd0 : (S_byc + 4'd1);
     end
 
     //------------------------------------------------------------------------

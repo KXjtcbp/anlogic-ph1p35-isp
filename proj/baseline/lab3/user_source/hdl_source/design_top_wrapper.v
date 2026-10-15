@@ -928,6 +928,11 @@ assign O_led = {S_sw4_sync1, S_sw3_sync1, S_sw2_sync1, S_sw1_sync1};
 assign S_tp_canary = 1'b0;  // [HDR-2026-10-11i] 停用：原为 ~(四开关)，但“四开关全上”正是推荐工作档，会把传感器灰度测试图点开。保留信号名供 LED/调试备用。
 
 //ISP算法顶层模块
+// [HDR-2026-10-15b] 运动检测结果（144 块位图 + 计数）
+wire [143:0] S_mot_mask;
+wire [7:0]   S_mot_cnt;
+wire         S_mot_any;
+
 isp_top u_isp_top (
 .axi4s_video_aclk(S_csi_rx_clk),
 .I_rst_n         (S_rst_n),
@@ -956,7 +961,11 @@ isp_top u_isp_top (
 .O_ae_frame_tgl  (S_ae_stat_tgl ),
 // [HDR-2026-10-12k] 白平衡遥测（awb 实际在用的 R/B 增益，ISP 域准静态）
 .O_wb_gain_r     (S_wb_gain_r   ),
-.O_wb_gain_b     (S_wb_gain_b   )
+.O_wb_gain_b     (S_wb_gain_b   ),
+// [HDR-2026-10-15b] 运动检测结果：透传给 hdmi_mixer 的 OSD 层
+    .O_mot_mask      (S_mot_mask    ),
+    .O_mot_cnt       (S_mot_cnt     ),
+    .O_mot_any       (S_mot_any     )
   );
 
 
@@ -1136,6 +1145,8 @@ isp_top u_isp_top (
         // [HDR-2026-10-12k] 遥测总线（49bit，24MHz/ISP 域 → 像素域，hdmi_mixer 内部 2 级 FF 同步）
         .I_dbg_vals      ( S_osd_dbg          ),
               .I_dbg2_vals     ( S_osd_dbg2         ),
+              .I_mot_mask      ( S_mot_mask           ),
+              .I_mot_cnt       ( S_mot_cnt            ),
         .O_video_rd_en   ( S_hdmi_window_rd_en),
         .I_video_rd_data ( S_video_rd_data    ),
         .O_hdmi_vsync    ( S_hdmi_out_vsync   ),
