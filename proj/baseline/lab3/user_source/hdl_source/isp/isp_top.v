@@ -43,6 +43,11 @@ module isp_top (
     input           I_gamma_bypass  ,
   // [HDR-2026-10-14] LSC（镜头色彩暗角校正）运行期旁路，1 = 直通
   input           I_lsc_bypass    ,
+  // [HDR-2026-10-15] 运动检测运行期控制（顶层由 SW3/SW4 驱动）
+  input           I_mot_en        ,
+  input  [7:0]    I_mot_diff_th   ,
+  input  [7:0]    I_mot_floor_th  ,
+  input           I_mot_strict2   ,
     //--------------------------------------------------------------------------
     // [HDR-2026-10-12] AE（自动曝光）帧统计输出
     //   全部在本模块 axi4s_video_aclk（= S_csi_rx_clk，60MHz）域；每帧只更新一次、
@@ -339,7 +344,10 @@ motion_detect #(
 ) u_motion_detect (
     .I_clk      (axi4s_video_aclk),
     .I_rst_n    (I_rst_n),
-    .I_bypass   (1'b0),
+    .I_bypass   (~I_mot_en),
+    .I_diff_th  (I_mot_diff_th ),
+    .I_floor_th (I_mot_floor_th),
+    .I_strict2  (I_mot_strict2 ),
     .I_tdata    (algo_O_tdata),
     .I_tvalid   (algo_O_tvalid),
     .I_tuser    (algo_O_tuser),

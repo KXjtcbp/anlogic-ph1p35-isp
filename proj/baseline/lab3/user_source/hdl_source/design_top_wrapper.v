@@ -543,7 +543,8 @@ module design_top_wrapper (
     end
     // ★2026-10-12 起 SW4 不再是"模拟增益选择"，它的作用改为 AE 使能★
     //   （原行 `wire S_gain_high = ~S_sw4_sync1;` 已删除，见下面 AE 一节的 S_ae_en）
-    wire S_gain_digital = ~S_sw3_sync1;   // 复位默认 0 = ×1.000（复位默认，安全默认）
+    // [HDR-2026-10-15] SW3 让位给「运动检测使能」，数字增益固定 ×1.000（原 = ~S_sw3_sync1）
+wire S_gain_digital = 1'b0;
 
     //==========================================================================
     // [HDR-2026-10-12] ★自动曝光 AE★ —— SW4 从"模拟增益选择"改为"AE 使能"
@@ -566,7 +567,18 @@ module design_top_wrapper (
     //     的输入侧（去马赛克之后、白平衡与 S 曲线之前），保证 AE 与 AWB 解耦、
     //     且拨 SW2 开关 S 曲线不会让 AE 的目标亮度漂移。
     //==========================================================================
-    wire        S_ae_en = ~S_sw4_sync1;   // 复位默认 S_sw4_sync1 = 1 ⇒ S_ae_en = 0（冻结）
+    // [HDR-2026-10-15] SW4 让位给「运动检测灵敏度」⇒ AE 改为常开（原 = ~S_sw4_sync1）
+wire        S_ae_en = 1'b1;
+
+// ---- [HDR-2026-10-15] 运动检测控制：SW3 = 使能，SW4 = 灵敏度档 ----
+//   实测极性「拨上 = 逻辑 0」⇒ 用 ~ 得到「上 = 1」。
+//   SW3 上 = 运动检测开 / 下 = 关（对应 motion_detect 的 I_bypass）
+//   SW4 上 = 严格（少误检）/ 下 = 宽松（少漏检）
+wire        S_mot_en     = ~S_sw3_sync1;
+wire        S_mot_strict = ~S_sw4_sync1;
+wire [7:0]  S_mot_diff   = S_mot_strict ? 8'd10 : 8'd6 ;
+wire [7:0]  S_mot_floor  = S_mot_strict ? 8'd6  : 8'd4 ;
+wire        S_mot_st2    = S_mot_strict;
 
     // ae_stat 的全部输出（60MHz ISP 域，准静态）
     wire [39:0] S_ae_stat_lsum;
@@ -953,6 +965,10 @@ isp_top u_isp_top (
 .I_blk_bypass    (S_blk_bypass  ),
 .I_gamma_bypass  (S_gamma_bypass),
         .I_lsc_bypass (S_lsc_bypass ),
+        .I_mot_en       (S_mot_en        ),
+        .I_mot_diff_th  (S_mot_diff      ),
+        .I_mot_floor_th (S_mot_floor     ),
+        .I_mot_strict2  (S_mot_st2       ),
 // [HDR-2026-10-12] AE 帧统计输出（60MHz ISP 域，准静态），送下面 u_ae_ctrl
 .O_ae_luma_sum   (S_ae_stat_lsum),
 .O_ae_pix_cnt    (S_ae_stat_pix ),

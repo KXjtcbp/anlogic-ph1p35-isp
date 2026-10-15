@@ -27,11 +27,15 @@ module motion_detect #(
     parameter [6:0]  LINES_PER_BLK = 7'd80,     // 每块行跨的行数
     parameter [7:0]  DIFF_TH       = 8'd10,     // 块均值差阈值（>>13 域）
     parameter [7:0]  FLOOR_TH      = 8'd6,      // 块亮度下限，抑制纯黑噪声
-    parameter        STRICT2       = 1'b1       // 1 = 连续两帧都动才算
+    parameter        STRICT2       = 1'b1       // 1 = 连续两帧都动才算（仅作默认值，见 I_strict2）
 )(
     input  wire         I_clk,
     input  wire         I_rst_n,
     input  wire         I_bypass,       // 1 = 直通（冻结位图与计数）
+    // [HDR-2026-10-15] 阈值改为运行期端口（由顶层 SW3/SW4 驱动），parameter 仅作上电默认
+    input  wire [7:0]   I_diff_th,      // 块均值差阈值
+    input  wire [7:0]   I_floor_th,     // 块亮度下限
+    input  wire         I_strict2,      // 1 = 连续两帧都动才算
     input  wire [95:0]  I_tdata,
     input  wire         I_tvalid,
     input  wire         I_tuser,        // 帧起始
@@ -150,10 +154,10 @@ module motion_detect #(
         S_row_any  = 1'b0;
         for (k = 0; k < 16; k = k + 1) begin
             if (S_cur_k[k] > S_prev[S_byc][k])
-                S_row_hit[k] = ((S_cur_k[k] - S_prev[S_byc][k]) > DIFF_TH && S_cur_k[k] > FLOOR_TH);
+                S_row_hit[k] = ((S_cur_k[k] - S_prev[S_byc][k]) > I_diff_th && S_cur_k[k] > I_floor_th);
             else
-                S_row_hit[k] = ((S_prev[S_byc][k] - S_cur_k[k]) > DIFF_TH && S_cur_k[k] > FLOOR_TH);
-            if (S_row_hit[k] && (!STRICT2 || S_hit1[S_byc*16 + k])) begin
+                S_row_hit[k] = ((S_prev[S_byc][k] - S_cur_k[k]) > I_diff_th && S_cur_k[k] > I_floor_th);
+            if (S_row_hit[k] && (!I_strict2 || S_hit1[S_byc*16 + k])) begin
                 S_row_mask[k] = 1'b1;
                 S_row_cnt = S_row_cnt + 8'd1;
                 S_row_any = 1'b1;
