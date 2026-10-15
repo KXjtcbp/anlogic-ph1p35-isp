@@ -86,6 +86,7 @@ module hdmi_mixer #(
     // [HDR-2026-10-15] 运动检测 OSD：16 列 x 9 行块掩码 + 计数
     input wire [143:0] I_mot_mask,
     input wire [7:0]   I_mot_cnt,
+    input wire         I_mot_en,   // [HDR-2026-10-15] 0 = 整层不显示（SW3 关）
 
     output wire       O_video_rd_en,  // DDR 读请求使能：直接跟随 I_video_de
     input wire[23:0]  I_video_rd_data,  // DDR 读回的 24bit 像素（RGB888），进入 2 拍流水后参与叠加
@@ -1443,7 +1444,7 @@ module hdmi_mixer #(
         S_mot_xoff = S_x_2d - {S_mot_bx, 6'b0} - {{1'b0, S_mot_bx}, 4'b0};
         S_mot_yoff = S_y_2d - {S_mot_by, 6'b0} - {1'b0, S_mot_by, 4'b0};
         // 掩码布局是 idx = by*16 + bx（见 motion_detect.v），bx 取低 4 位
-        S_mot_on   = I_mot_mask[{1'b0, S_mot_by, S_mot_bx[3:0]}] &&
+        S_mot_on   = I_mot_en && I_mot_mask[{1'b0, S_mot_by, S_mot_bx[3:0]}] &&
                      ( (S_mot_xoff < 12'd3) || (S_mot_xoff > 12'd76) ||
                        (S_mot_yoff < 12'd3) || (S_mot_yoff > 12'd76) );
         if(S_mot_on) begin

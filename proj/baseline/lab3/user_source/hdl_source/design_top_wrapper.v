@@ -576,9 +576,10 @@ wire        S_ae_en = 1'b1;
 //   SW4 上 = 严格（少误检）/ 下 = 宽松（少漏检）
 wire        S_mot_en     = ~S_sw3_sync1;
 wire        S_mot_strict = ~S_sw4_sync1;
-wire [7:0]  S_mot_diff   = S_mot_strict ? 8'd10 : 8'd6 ;
-wire [7:0]  S_mot_floor  = S_mot_strict ? 8'd6  : 8'd4 ;
-wire        S_mot_st2    = S_mot_strict;
+wire [7:0]  S_mot_diff   = S_mot_strict ? 8'd12 : 8'd8 ;   // 双阈值之「绝对差」
+wire [7:0]  S_mot_floor  = S_mot_strict ? 8'd10 : 8'd6 ;   // 双阈值之「块亮度下限」
+wire [3:0]  S_mot_rel    = S_mot_strict ? 4'd3  : 4'd4 ;   // 双阈值之「相对差」> 块亮度>>rel
+wire        S_mot_st2    = S_mot_strict;   // 两档都 STRICT2=1：连续两帧才算，主要抗噪手段
 
     // ae_stat 的全部输出（60MHz ISP 域，准静态）
     wire [39:0] S_ae_stat_lsum;
@@ -969,6 +970,7 @@ isp_top u_isp_top (
         .I_mot_diff_th  (S_mot_diff      ),
         .I_mot_floor_th (S_mot_floor     ),
         .I_mot_strict2  (S_mot_st2       ),
+      .I_mot_rel_shift(S_mot_rel      ),
 // [HDR-2026-10-12] AE 帧统计输出（60MHz ISP 域，准静态），送下面 u_ae_ctrl
 .O_ae_luma_sum   (S_ae_stat_lsum),
 .O_ae_pix_cnt    (S_ae_stat_pix ),
@@ -1163,6 +1165,7 @@ isp_top u_isp_top (
               .I_dbg2_vals     ( S_osd_dbg2         ),
               .I_mot_mask      ( S_mot_mask           ),
               .I_mot_cnt       ( S_mot_cnt            ),
+      .I_mot_en        ( S_mot_en             ),
         .O_video_rd_en   ( S_hdmi_window_rd_en),
         .I_video_rd_data ( S_video_rd_data    ),
         .O_hdmi_vsync    ( S_hdmi_out_vsync   ),

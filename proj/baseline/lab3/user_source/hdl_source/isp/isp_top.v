@@ -48,6 +48,7 @@ module isp_top (
   input  [7:0]    I_mot_diff_th   ,
   input  [7:0]    I_mot_floor_th  ,
   input           I_mot_strict2   ,
+input  [3:0]    I_mot_rel_shift ,
     //--------------------------------------------------------------------------
     // [HDR-2026-10-12] AE（自动曝光）帧统计输出
     //   全部在本模块 axi4s_video_aclk（= S_csi_rx_clk，60MHz）域；每帧只更新一次、
@@ -348,6 +349,7 @@ motion_detect #(
     .I_diff_th  (I_mot_diff_th ),
     .I_floor_th (I_mot_floor_th),
     .I_strict2  (I_mot_strict2 ),
+    .I_rel_shift(I_mot_rel_shift),
     .I_tdata    (algo_O_tdata),
     .I_tvalid   (algo_O_tvalid),
     .I_tuser    (algo_O_tuser),
