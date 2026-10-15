@@ -2,9 +2,9 @@
 // 文件      : awb.v
 // 模块      : awb #( parameter IMG_HEIGHT = 1080, IMG_WIDTH = 1920 )
 // 功能      : 自动白平衡增益：按 R/G/B 三通道累加和算出 R、B 相对 G 的增益，再对延时对齐后的 96bit（4 像素 x 24bit）数据逐像素施加增益。★与 isp\awb\awb.v 同名但内容不同（本文件 383 行、那份 490 行，属另一版本）。核实结论：本文件在 .al 编译清单中，被 isp_top.v:126 例化为 awb，是本工程当前在用的白平衡实现（isp/awb/ 下的同名文件不在 .al 中）。
-// 数据通路  : 输入 I_tdata[95:0]（每 24bit 一个像素：[23:16]=R、[15:8]=G、[7:0]=B）、I_tvalid/I_tuser/I_tlast；输出 O_tdata[95:0] 及 O_tvalid/O_tuser/O_tlast，另有 output I_tready 与 input O_tready（方向命名沿用原作者写法，实际是同一对握手）。①累加区：rgb_sum[0] = r+g+b（注释说“削弱白色”，即用亮度阈值排除过亮像素），sum_r/sum_g/sum_b 在 I_tuser 或复位时置 1（避免除零），在 I_tvalid_r0 && (rgb_sum[0] < 720) 时累加（720 是经验阈值）；②除法区：例化两个 divider（div_gen_G_R_r1 / divide_G_B_r1），.numerator({sum_g[0],16d0})、.denominator(sum_r[0])/(sum_b[0])、.start(I_tvalid_r1)，得到 48bit 的 dout_R[0]/dout_B[0]；③延时区：例化 signal_delay #(.IMG_HEIGHT,.IMG_WIDTH,.DATA_WIDTH(96),.DELAY_CYCLE(50))，用 BRAM 把像素流延后若干行，等增益算完再对齐；④增益寄存器 in_r_r1/in_b_r1 复位与 I_tuser 时为 20h10000（=1.0 的定点表示），done[0] 时若 |in_r_x1[47:20] 非零则饱和到 20hfffff，否则取 in_r_x1[19:0]；⑤增益乘：R_new_rN <= in_r_r1 * rgb888_r_d1[N-1]，G 不乘，B 乘 in_b_r1；⑥输出饱和 assign R_new_xN = (R_new_rN[27:24]) ? 255 : R_new_rN[23:16]（G 直接取），最后把 4 像素拼回 96bit；O_tlast = (valid_d1==0)&&(valid_d2==1)（在 valid 下降沿产生行结束），O_tuser = I_tuser，O_tvalid = valid_d2，I_tready = O_tready。
+// 数据通路  : 输入 I_tdata[95:0]（每 24bit 一个像素：[23:16]=R、[15:8]=G、[7:0]=B）、I_tvalid/I_tuser/I_tlast；输出 O_tdata[95:0] 及 O_tvalid/O_tuser/O_tlast，另有 output I_tready 与 input O_tready（方向命名沿用原作者写法，实际是同一对握手）。①累加区：rgb_sum[0] = r+g+b（注释说“削弱白色”，即用亮度阈值排除过亮像素），sum_r/sum_g/sum_b 在 I_tuser 或复位时置 1（避免除零），在 I_tvalid_r0 && (rgb_sum[0] < 720) 时累加（720 是经验阈值）；②除法区：[HDR-2026-10-15a] 已由两个 TD 流水 divider 改为 wb_recip.v（归一化+倒数ROM+一次乘法），.I_den(sum_r[0])/(sum_b[0])、.I_num(sum_g[0])，输出 48bit in_r_x1/in_b_x1；③延时区：例化 signal_delay #(.IMG_HEIGHT,.IMG_WIDTH,.DATA_WIDTH(96),.DELAY_CYCLE(50))，用 BRAM 把像素流延后若干行，等增益算完再对齐；④增益寄存器 in_r_r1/in_b_r1 复位与 I_tuser 时为 20h10000（=1.0 的定点表示），done[0] 时若 |in_r_x1[47:20] 非零则饱和到 20hfffff，否则取 in_r_x1[19:0]；⑤增益乘：R_new_rN <= in_r_r1 * rgb888_r_d1[N-1]，G 不乘，B 乘 in_b_r1；⑥输出饱和 assign R_new_xN = (R_new_rN[27:24]) ? 255 : R_new_rN[23:16]（G 直接取），最后把 4 像素拼回 96bit；O_tlast = (valid_d1==0)&&(valid_d2==1)（在 valid 下降沿产生行结束），O_tuser = I_tuser，O_tvalid = valid_d2，I_tready = O_tready。
 // 时钟/复位 : I_clk 上升沿同步；I_rst_n 异步复位、低电平有效；内部有 r0/r1/d1/d2 多级流水与 signal_delay 的整行延时，所以输出相对输入整体延后若干行。
-// 依赖      : 例化 divider（除法器 IP，两处）与 signal_delay（本目录 signal_delay.v，内部再例化 BRAM blk_mem_gen_awb_delay_signal）。第 46~55 行有被 // 注释掉的 RGB565->RGB888 代码，仅作历史保留。
+// 依赖      : [HDR-2026-10-15a] wb_recip.v（倒数查表除法，替代原两个 TD divider）与 signal_delay（本目录 signal_delay.v，内部再例化 BRAM blk_mem_gen_awb_delay_signal）。第 46~55 行有被 // 注释掉的 RGB565->RGB888 代码，仅作历史保留。
 // 综合/实现 : 本文件在 camera_to_dsi_display.al 的编译清单中，参与本工程综合实现；用到除法器与 BRAM，是本工程资源占用较大的模块之一。
 //-----------------------------------------------------------------------------
 // 修改记录  :
@@ -223,15 +223,24 @@ assign  rgb888_b_d0[3] = I_tdata_d0[72+:8];
                            计算增益                                       
 *****************************************************************/
 
-  wire [47:0] dout_R[3:0];
-  wire [47:0] dout_B[3:0];
-
-  wire done[3:0];
-
+  // [HDR-2026-10-15a] ★优化1：用「归一化 + 倒数查表 + 一次乘法」替换两个 TD 流水除法器★
+  //   旧实现 div_gen_G_R_r1 / divide_G_B_r1 合计 1896 logic LUT + 2168 ripple
+  //   + 5507 FF（约占全片 LUT6 的 11%）。换成 wb_recip.v 后每通道约
+  //   250 LUT + 1 ERAM + 1~2 DSP。
+  //   接口与饱和语义【完全不变】：
+  //     in_r_x1[19:0] = Q16 增益；|in_r_x1[47:20] 非零 <=> 真商 >= 2^20
+  //   于是下面 `if(|in_r_x1[47:20]) 饱和 20'hfffff` 的分支一行都不用改。
   wire [47:0] in_r_x1;
   wire [47:0] in_b_x1;
-  assign in_r_x1 = dout_R[0][47:0];
-  assign in_b_x1 = dout_B[0][47:0];
+
+  // 门控：wb_recip 要求 I_den >= 65536 且 I_num >= 1，否则 e-16 会下溢。
+  //   帧首累加器刚被 I_tuser 清零时必然不满足 —— 此时【保持上一帧增益】才是
+  //   正确行为（不是清零）。像素实际用的是 I_tuser 拍锁存的 in_*_hold，
+  //   而那一拍累加器是满的，所以这个门控对输出画面不可见。
+  wire S_sum_ok  = (sum_r[0] >= 32'd65536) && (sum_b[0] >= 32'd65536)
+                && (sum_g[0] >= 32'd1);
+  // 旧 divider 的 done per valid = 1.0（B 门级 TB 实测），这里用同一拍做写使能
+  wire S_gain_we = I_tvalid_r1 && S_sum_ok;
 
 
 
@@ -241,24 +250,17 @@ assign  rgb888_b_d0[3] = I_tdata_d0[72+:8];
 *****************************************************************/
     //为了保证合理的延迟，这里使用了除法器
 
-      divider div_gen_G_R_r1 (
-          .clk(I_clk),  // input wire aclk
-          .rst(!I_rst_n),
-          .start(I_tvalid_r1),
-          .denominator(sum_r[0]),  // input wire [31 : 0] s_axis_divisor_tdata
-          .numerator({sum_g[0],16'd0}),  // input wire [47 : 0] s_axis_dividend_tdata
-          .quotient(dout_R[0]),  // output wire [79 : 0] m_axis_dout_tdata
-          .done(done[0])
+      // [HDR-2026-10-15a] 优化1：倒数查表法（纯组合逻辑，零流水延迟）
+      wb_recip u_wb_recip_r (
+          .I_den (sum_r[0]),
+          .I_num (sum_g[0]),
+          .O_q   (in_r_x1)
       );
 
-      divider divide_G_B_r1 (
-          .clk(I_clk),  // input wire aclk
-          .rst(!I_rst_n),
-          .start(I_tvalid_r1),
-          .denominator(sum_b[0]),  // input wire [31 : 0] s_axis_divisor_tdata
-          .numerator({sum_g[0],16'd0}),  // input wire [47 : 0] s_axis_dividend_tdata
-          .quotient(dout_B[0]),  // output wire [79 : 0] m_axis_dout_tdata
-          .done()
+      wb_recip u_wb_recip_b (
+          .I_den (sum_b[0]),
+          .I_num (sum_g[0]),
+          .O_q   (in_b_x1)
       );
 
      
@@ -303,7 +305,8 @@ assign  rgb888_b_d0[3] = I_tdata_d0[72+:8];
             in_b_hold <= 20'h10000;
         end
         else begin
-            if(done[0])begin
+            // [HDR-2026-10-15a] done[0] -> S_gain_we（含累加器就绪门控）
+            if(S_gain_we)begin
                 if(|in_r_x1[47:20])
                     in_r_r1 <= 20'hfffff;
                 else 

@@ -107,7 +107,23 @@
                     <Attr Name="CompileOrder" Val="56"/>
                 </FileInfo>
             </File>
-            <File Path="../user_source/hdl_source/isp/raw10_unpacket_2lane.v">
+                        <File Path="../user_source/hdl_source/isp/lsc.v">
+                <FileInfo>
+                    <Attr Name="UsedInSyn" Val="true"/>
+                    <Attr Name="UsedInP&R" Val="true"/>
+                    <Attr Name="BelongTo" Val="design_1"/>
+                    <Attr Name="CompileOrder" Val="57"/>
+                </FileInfo>
+            </File>
+            <File Path="../user_source/hdl_source/wb_recip.v">
+                <FileInfo>
+                    <Attr Name="UsedInSyn" Val="true"/>
+                    <Attr Name="UsedInP&R" Val="true"/>
+                    <Attr Name="BelongTo" Val="design_1"/>
+                    <Attr Name="CompileOrder" Val="58"/>
+                </FileInfo>
+            </File>
+<File Path="../user_source/hdl_source/isp/raw10_unpacket_2lane.v">
                 <FileInfo>
                     <Attr Name="UsedInSyn" Val="true"/>
                     <Attr Name="UsedInP&R" Val="true"/>
@@ -340,15 +356,7 @@
                     <Attr Name="CompileOrder" Val="53"/>
                 </FileInfo>
             </File>
-        
-            <File Path="../user_source/hdl_source/isp/lsc.v">
-            <FileInfo><Attr Name="UsedInSyn" Val="true"/>
-                    <Attr Name="UsedInP&R" Val="true"/>
-                    <Attr Name="BelongTo" Val="design_1"/>
-                    <Attr Name="CompileOrder" Val="57"/>
-                
-</FileInfo>                        </File>
-</Verilog>
+        </Verilog>
         <System_Verilog>
             <File Path="../user_source/hdl_source/mipi_dphy_rx/mipi_dphy_rx_ph1p_mipiio_wrapper.sv">
                 <FileInfo>
