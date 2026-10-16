@@ -60,8 +60,8 @@ for rel in (r"proj\baseline\lab3\user_source\hdl_source\awb.v",
 # ---------------------------------------------------------------- P0-2 md5 of bits
 sec("P0-2b  历史比特流的 md5（验证 B 手上的散列）")
 bits = [
-    r"proj\releases\2026-10-12_OSD遥测版\camera_to_dsi_display.bit",
-    r"proj\releases\2026-10-12_AE修正版\camera_to_dsi_display.bit",
+    r"proj\releases\2026-10-12_osd_telemetry\camera_to_dsi_display.bit",
+    r"proj\releases\2026-10-12_ae_fixed\camera_to_dsi_display.bit",
     r"proj\releases\2026-10-12_AE首版\camera_to_dsi_display.bit",
     r"_backup\20261012_bit_K45_0149\camera_to_dsi_display.bit",
     r"proj\baseline\lab3\td_project\camera_to_dsi_display_Runs\phy_1\camera_to_dsi_display.bit",

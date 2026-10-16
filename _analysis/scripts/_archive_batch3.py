@@ -54,7 +54,7 @@ for old, new, *_ in PLAN:
 # ---------- 写 README ----------
 readme = """# 2026-10-12 AE 两行遥测验证（8 张）
 
-板子：`proj/releases/2026-10-12_两行遥测版/camera_to_dsi_display.bit`
+板子：`proj/releases/2026-10-12_osd_telemetry_2line/camera_to_dsi_display.bit`
       md5 `79c6832556dda860814e4b5a94514215`
 
 ## 一次上电贯穿全程

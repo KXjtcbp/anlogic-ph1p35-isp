@@ -129,6 +129,6 @@ AWB（算法正确，但有 −3 码加性偏置待查）、**AE 闭环（代码
 |---|---|---|---|
 | K=45 基线 | `_backup/20261012_bit_K45_0149/` | `f4f9ce5ec969a7524bb0d5e609ca60d1` | 无 AE |
 | AE 首版 | `proj/releases/2026-10-12_AE首版/` | `57ce384dd79433dec0e5728511c7be8c` | AE 方向反的，已作废 |
-| **AE 修正版** | `proj/releases/2026-10-12_AE修正版/` | `4c75078a4c31b091a3e015dde4854b59` | **当前推荐**，WNS +95ps |
-| 原厂 lab3 | `proj/releases/lab3_原厂_2026-09-10/` | — | 未改动的官方基线 |
+| **AE 修正版** | `proj/releases/2026-10-12_ae_fixed/` | `4c75078a4c31b091a3e015dde4854b59` | **当前推荐**，WNS +95ps |
+| 原厂 lab3 | `proj/releases/lab3_vendor_2026-09-10/` | — | 未改动的官方基线 |
 

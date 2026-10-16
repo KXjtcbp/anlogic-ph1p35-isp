@@ -5,7 +5,7 @@ sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 WS = r"E:\FPGA"
 REL = os.path.join(WS, "proj", "releases")
 
-K45 = """proj/releases/2026-10-12_K45基线/camera_to_dsi_display.bit
+K45 = """proj/releases/2026-10-12_k45_baseline/camera_to_dsi_display.bit
 ============================================================
 md5    f4f9ce5ec969a7524bb0d5e609ca60d1
 大小   1789539 B
@@ -32,7 +32,7 @@ AWB 诊断的对照基线（不含 AE 变量）。要复现 2026-10-12 02:30 那
 所有 PH1P35MDG324 的 .bit 都是 1789539 B，大小相同不代表内容相同，只能比 md5。
 """
 
-OSD = """proj/releases/2026-10-12_OSD遥测版/camera_to_dsi_display.bit
+OSD = """proj/releases/2026-10-12_osd_telemetry/camera_to_dsi_display.bit
 ============================================================
 md5    af25c9b559898eb677241f729a997614
 大小   1789539 B
@@ -77,11 +77,11 @@ Hold  WNS  +20 ps  TNS 0  违例 0
 ----------
 烧上去、四开关全拨上，画面左上角应有四行 OSD。若橙色第 4 行不出现，
 说明该层没生效，回报即可。
-回滚：proj/releases/2026-10-12_AE修正版/camera_to_dsi_display.bit
+回滚：proj/releases/2026-10-12_ae_fixed/camera_to_dsi_display.bit
       （md5 4c75078a4c31b091a3e015dde4854b59，无遥测行，其余功能相同）
 """
 
-for sub, txt in (("2026-10-12_K45基线", K45), ("2026-10-12_OSD遥测版", OSD)):
+for sub, txt in (("2026-10-12_k45_baseline", K45), ("2026-10-12_osd_telemetry", OSD)):
     p = os.path.join(REL, sub, "readMe.txt")
     open(p, "w", encoding="utf-8", newline="\r\n").write(txt)
     print("wrote %s (%d B)" % (os.path.relpath(p, WS), os.path.getsize(p)))
