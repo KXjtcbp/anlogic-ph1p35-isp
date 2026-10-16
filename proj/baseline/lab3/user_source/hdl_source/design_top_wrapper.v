@@ -1173,6 +1173,11 @@ isp_top u_isp_top (
         .I_dbg_vals      ( S_osd_dbg          ),
               .I_dbg2_vals     ( S_osd_dbg2         ),
               .I_mot_mask      ( S_mot_mask           ),
+        // [PAR-OSD 2026-10-15 组员C / 2026-10-16 合入+relabel]
+        //   第 6 层「实时参数行」：四个开关的「已生效」状态。
+        //   位序 [3]=SW1 [2]=SW2 [1]=SW3 [0]=SW4，与 S_gain_applied 的拼接完全一致；1=拨下。
+        //   文本已改为 S-CURVE / LSC / MOT:1|0 / SENS H|L（SW3/SW4 改用途后的真实含义）。
+        .I_par_sw        ( S_gain_applied     ),
               .I_mot_cnt       ( S_mot_cnt            ),
       .I_mot_en        ( S_mot_en             ),
         .O_video_rd_en   ( S_hdmi_window_rd_en),

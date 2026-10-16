@@ -1,11 +1,18 @@
 //=============================================================================
 // 文件      : hdmi_mixer.v
 // 模块      : hdmi_mixer
-// 功能      : 把 DDR 读回的摄像头画面与 OSD 叠加后按 HDMI 时序输出。OSD 共三层，
-//             优先级从低到高：160x160 安路 Logo（取自 anlogic_logo_rom，用 ROM 的
-//             bit24 作有效位） > 黄色帧计数行 "安路 CNT:xxxxxx"（16x16 点阵 + 6 位
-//             十进制，COLOR_DYN_TEXT=24'hfff200） > 亮绿色算法状态行 "MODE n"
-//             （5x7 点阵纵向放大到 10 高，COLOR_ALG_TEXT=24'h00ff88）。
+// 功能      : 把 DDR 读回的摄像头画面与 OSD 叠加后按 HDMI 时序输出。OSD 共六层，
+//             优先级从低到高（后判定的覆盖先判定的；六层窗口两两不重叠）：
+//               [1] 160x160 安路 Logo（取自 anlogic_logo_rom，用 ROM 的 bit24 作有效位）
+//               [2] 黄色帧计数行 "安路 CNT:xxxxxx"（16x16 点阵 + 6 位十进制，
+//                   COLOR_DYN_TEXT=24'hfff200）
+//               [3] 亮绿色算法状态行 "MODE n"（5x7 点阵纵向放大到 10 高，
+//                   COLOR_ALG_TEXT=24'h00ff88）
+//               [4] 橙色 AE/AWB 遥测行（19 字符 16x16 字距，COLOR_DBG_TEXT=24'hff8000）
+//               [5] 橙色 AE 决策遥测行（同色，紧接 [4] 下方一行）
+//               [6] [PAR-OSD 2026-10-15] 亮青色「实时参数行」
+//                   "S-CURVE ON  LSC ON  GAIN2 AE ON "（32 字符，16x16 点阵，
+//                   COLOR_PAR_TEXT=24'h00e6ff），显示四个拨动开关的「已生效」状态。
 //             另有 DEBUG_MODE / SHOW_DEBUG 控制的调试彩条与状态条，默认全部关闭。
 // 数据通路  : (1) I_video_rd_data(24bit,DDR 读口) --打 2 拍--> S_video_data_2d
 //             (2) I_video_de/last/user 计数 -> S_x/S_y --打 2 拍--> S_x_2d/S_y_2d
@@ -13,9 +20,16 @@
 //             -> 与 S_video_data_2d 二选一 -> 打 1 拍 -> O_hdmi_data。
 //             O_video_rd_en 直接等于 I_video_de（de 有效即向 DDR 请求像素）。
 //             坐标与数据的流水级数必须一致(各 2 拍)，否则叠加的字会整体错位。
-// 时钟/复位 : 单时钟 I_clk（像素域），I_rst_n 低有效异步复位。唯一跨时钟域输入是
-//             24 MHz 域的 I_algo_mode_tgl / I_algo_mode_wrap（1 bit 翻转信号），
-//             本模块三级同步 + 异或取沿后在像素域本地计数，见文末 [MODE-PIPE] 段。
+// 时钟/复位 : 单时钟 I_clk（像素域），I_rst_n 低有效异步复位。跨时钟域输入共三组：
+//             (a) 24 MHz 域的 I_algo_mode_tgl / I_algo_mode_wrap（1 bit 翻转信号），
+//                 本模块三级同步 + 异或取沿后在像素域本地计数，见文末 [MODE-PIPE] 段；
+//             (b) 24 MHz 域的准静态遥测总线 I_dbg_vals[48:0] / I_dbg2_vals[33:0]
+//                 （最慢 16.7ms 变一次），本模块 2 级 FF 同步；
+//             (c) [PAR-OSD 2026-10-15] 24 MHz 域的 I_par_sw[3:0]（四开关「已生效」电平，
+//                 顶层 S_gain_applied 已做 10ms 去抖锁存），同样 2 级 FF 同步。
+//             (b)(c) 的跨域路径由 SDC 里既有的
+//             `set_max_delay -datapath_only -from [get_clocks {pll_clk_24m}]
+//              -to [get_clocks {HDMI_PIXEL_CLK}] 8.000` 覆盖，本次未新增任何 SDC 约束。
 //             像素时钟的具体频率未能从代码确认（文件里只出现“24 MHz 域”这一处描述）。
 // 依赖      : 子模块 anlogic_logo_rom（I_addr[14:0] -> O_pixel[24:0]，bit24=有效，
 //             [23:0]=RGB888）与 osd_char_lib（I_char/I_row -> O_row_bits[15:0]），
@@ -33,6 +47,12 @@
 //-----------------------------------------------------------------------------
 // 修改记录  :
 //   <日期不详>  在官方 lab3 基线的 HDMI 混合模块上扩展 OSD：新增“安路 CNT:”帧计数行与“MODE n”算法状态行（COLOR_ALG_TEXT=24'h00ff88）
+//   2026-10-15  [PAR-OSD] 新增第 6 层「实时参数行」：新端口 I_par_sw[3:0]（接顶层
+//               S_gain_applied，24MHz 域已去抖锁存的那份），模块内 2 级 FF 同步 +
+//               5 个字符码预译码寄存器，复用唯一的 osd_char_lib 例化（不新增 ROM/ERAM），
+//               窗口 (176,200) 512x16、亮青 COLOR_PAR_TEXT=24'h00e6ff。文本依次为
+//               "S-CURVE ON / OFF"、"LSC ON / OFF"、"GAIN2 / GAIN1"、"AE ON / OFF"。
+//               仅用到已有字形 + osd_char_lib 本次补的 '-'；无乘法器、无新增 SDC。
 //-----------------------------------------------------------------------------
 // 2026-10-09 全树做过一次标识符改名（只改名字不改逻辑），对照见 E:\FPGA\_analysis\rename_report.txt
 //=============================================================================
@@ -86,7 +106,17 @@ module hdmi_mixer #(
     // [HDR-2026-10-15] 运动检测 OSD：16 列 x 9 行块掩码 + 计数
     input wire [143:0] I_mot_mask,
     input wire [7:0]   I_mot_cnt,
-    input wire         I_mot_en,   // [HDR-2026-10-15] 0 = 整层不显示（SW3 关）
+    input wire         I_mot_en,   // 0 = 整层不显示（SW3 关）
+
+    // [PAR-OSD 2026-10-15] 第 6 层「实时参数行」的输入：四个拨动开关的「已生效」电平。
+    //   ★位序与顶层 S_gain_applied 的拼接顺序严格一致★：
+    //     [3]=SW1(LSC 旁路) [2]=SW2(S 曲线旁路) [1]=SW3(数字增益) [0]=SW4(AE 使能)；1 = 拨下。
+    //     （顶层是 `S_gain_applied <= {S_sw1_sync1, S_sw2_sync1, S_sw3_sync1, S_sw4_sync1};`
+    //       即拼接最左 = 最高位 = SW1；改写本模块的译码位时必须同步改这里。）
+    //   ★不直接接 S_sw?_sync1★：那四位分属 60MHz(MIPI_RX_BYTE_CLK) 与 24MHz 两个域，
+    //   而顶层的 S_gain_applied 已经在 24MHz 域内合并、并做了 10ms 去抖锁存，
+    //   跨域点只有这一处（准静态，最慢 10ms 变一次）。
+    input wire [3:0]  I_par_sw,
 
     output wire       O_video_rd_en,  // DDR 读请求使能：直接跟随 I_video_de
     input wire[23:0]  I_video_rd_data,  // DDR 读回的 24bit 像素（RGB888），进入 2 拍流水后参与叠加
@@ -322,6 +352,69 @@ module hdmi_mixer #(
     reg  [11:0] S_mot_xoff;
     reg  [11:0] S_mot_yoff;
     reg         S_mot_on;
+
+    //------------------------------------------------------------------------
+    // [PAR-OSD 2026-10-15] 第 6 层：实时参数行（四个拨动开关的已生效状态 + 数字增益档）
+    //   定长 32 字符，索引 0..31：
+    //     0..7   "S-CURVE "        8..11  "ON  " / "OFF "
+    //     12..15 "LSC "            16..19 "ON  " / "OFF "
+    //     20..24 "GAIN2" / "GAIN1" 25     " "
+    //     26..31 "AE ON " / "AE OFF"
+    //   整行由 case(S_par_idx) 拼字；动态字符只有 7 个（idx 9/10/17/18/24/30/31），
+    //   它们单独用寄存器预译码（S_par_c*），使像素域关键路径里只剩
+    //   「坐标 -> 字符码 mux -> osd_char_lib -> 16 选 1 列选」，与既有黄色 CNT 行同深度。
+    //------------------------------------------------------------------------
+    localparam PAR_OSD_X      = 12'd176;
+    localparam PAR_OSD_Y      = 12'd200;
+    localparam PAR_OSD_W      = 12'd512;    // 32 字符 x 16 字距
+    localparam PAR_OSD_H      = 12'd16;
+    localparam COLOR_PAR_TEXT = 24'h00e6ff; // 亮青（= 本文件历史遗留常量 COLOR_TEXT 的取值，与黄/绿/橙都不撞）
+
+    reg [3:0] S_par_sw_1d;   // I_par_sw 的 2 级同步（准静态信号，做法同 I_dbg_vals）
+    reg [3:0] S_par_sw_2d;
+    always @(posedge I_clk or negedge I_rst_n) begin
+        if(!I_rst_n) begin
+            S_par_sw_1d <= 4'b1111;   // 复位 = 与顶层 S_gain_applied 的复位值一致（四开关全「下」）
+            S_par_sw_2d <= 4'b1111;
+        end
+        else begin
+            S_par_sw_1d <= I_par_sw;
+            S_par_sw_2d <= S_par_sw_1d;
+        end
+    end
+
+    // 7 个动态字符的预译码：只在开关变化那一拍更新，不参与像素坐标路径
+    reg [7:0] S_par_c9;    // "S-CURVE ON/OFF" 的 'N' / 'F'
+    reg [7:0] S_par_c10;   // "S-CURVE ON/OFF" 的 ' ' / 'F'
+    reg [7:0] S_par_c17;   // "LSC ON/OFF" 的 'N' / 'F'
+    reg [7:0] S_par_c18;   // "LSC ON/OFF" 的 ' ' / 'F'
+    reg [7:0] S_par_c24;   // "GAIN2" / "GAIN1"
+    reg [7:0] S_par_c30;   // "AE ON/OFF" 的 'N' / 'F'
+    reg [7:0] S_par_c31;   // "AE ON/OFF" 的 ' ' / 'F'（"OFF" 的第 3 个字符）
+    always @(posedge I_clk or negedge I_rst_n) begin
+        if(!I_rst_n) begin
+            S_par_c9  <= 8'h4e;   // 'N'
+            S_par_c10 <= 8'h20;   // 空格
+            S_par_c17 <= 8'h4e;   // 'N'
+            S_par_c18 <= 8'h20;   // 空格
+            S_par_c24 <= 8'h30;   // '0'  [PAR-OSD 改] 复位默认 MOT OFF
+            S_par_c30 <= 8'h20;   // ' '  [PAR-OSD 改]
+            S_par_c31 <= 8'h4c;   // 'L'  [PAR-OSD 改] 复位默认宽松档
+        end
+        else begin
+            S_par_c9  <= S_par_sw_2d[2] ? 8'h46 : 8'h4e;   // SW2 拨下 = S 曲线旁路 = OFF
+            S_par_c10 <= S_par_sw_2d[2] ? 8'h46 : 8'h20;
+            S_par_c17 <= S_par_sw_2d[3] ? 8'h46 : 8'h4e;   // SW1 拨下 = LSC 直通 = OFF
+            S_par_c18 <= S_par_sw_2d[3] ? 8'h46 : 8'h20;
+            S_par_c24 <= S_par_sw_2d[1] ? 8'h30 : 8'h31;   // [PAR-OSD 改] SW3 拨下=逻辑 1=运动检测关='0'
+            S_par_c30 <= 8'h20;   // [PAR-OSD 改] 固定空格
+            S_par_c31 <= S_par_sw_2d[0] ? 8'h4c : 8'h48;   // [PAR-OSD 改] SW4 拨下=宽松='L'
+        end
+    end
+
+    reg [4:0]  S_par_idx;   // 字符位 0..31
+    reg [3:0]  S_par_col;   // 字形列 0..15（bit15 = 该行最左列）
+    reg [3:0]  S_par_row;   // 字形行 0..15
 
     // 遥测行专用字形库：0..9 = '0'..'9'，10..15 = 'A'..'F'，16='M' 17='S' 18='W'，
     //   其余（含空格）= 全 0。
@@ -871,7 +964,7 @@ module hdmi_mixer #(
         .O_pixel ( S_logo_pixel )
     );
 
-    osd_char_lib u_osd_char_lib(  // 统一 16x16 字符库：当前只用于给黄色 CNT 行取字形
+    osd_char_lib u_osd_char_lib(  // 统一 16x16 字符库：黄色 CNT 行与第 6 层参数行共用这一份例化
         .I_char     ( S_pf_char     ),
         .I_row      ( S_pf_row      ),
         .O_row_bits ( S_pf_row_bits )
@@ -1039,6 +1132,11 @@ module hdmi_mixer #(
         S_alg_ly   = 4'd0;
         S_alg_bits = 5'd0;
         S_alg_on   = 1'b0;
+
+        // [PAR-OSD 2026-10-15] 实时参数行默认值（全部赋初值，避免综合出锁存器）
+        S_par_idx  = 5'd0;
+        S_par_col  = 4'd0;
+        S_par_row  = 4'd0;
 
 //------ 第 1 层：安路 Logo（窗口 160x160，图形来自 ROM） ------
         if(S_video_de_2d) begin  // 只在 de 有效的流水级做判定（消隐期不产生 OSD）
@@ -1420,12 +1518,89 @@ module hdmi_mixer #(
                     S_osd_color = COLOR_DBG_TEXT;
                 end
             end
-        end
 
-        // ---- [HDR-2026-10-15] 第 5 层：运动块边界描边（最低优先级，不遮遥测文字）----
-        //   块网格 16x9、块尺寸 80x80，与 motion_detect.v 的 BEATS_PER_BLK=20*4px 对齐。
-        //   块索引 = 15+8 个比较器求和；块内偏移用 bx*80=(bx<<6)+(bx<<4) 还原 => 零除法器。
-        // 块索引：每一项显式补零到目标位宽，避免 Verilog 把 1bit 加法链按 1bit 计算
+//------ 第 6 层：[PAR-OSD 2026-10-15] 实时参数行 "S-CURVE ON  LSC ON  GAIN2 AE ON " ------
+//   最后判定 ⇒ 优先级最高。窗口 (176,200) 512x16，与其余五层都不重叠
+//   （Logo y0..159 / CNT y120..143 / DBG y152..161 / DBG2 y164..173 / MODE y176..185）。
+            if((S_x_2d >= PAR_OSD_X) && (S_x_2d < (PAR_OSD_X + PAR_OSD_W)) &&
+               (S_y_2d >= PAR_OSD_Y) && (S_y_2d < (PAR_OSD_Y + PAR_OSD_H))) begin
+                // ★局部坐标不用 12bit 减法★ PAR_OSD_X=176=11*16、PAR_OSD_Y=200=12*16+8：
+                //     (x-176)/16 = x/16 - 11 ，(x-176)%16 = x%16（列号直接取低位）
+                //     (y-200)%16 = y%16 - 8
+                //   窗口内 x<688、y<216，5bit/4bit 无符号回卷正好给出 0..31 / 0..15。
+                //   ★S_par_idx 必须 5bit★：窗口宽 512 > 256，若写成 S_x_2d[7:4]，索引在
+                //   x>=432 处会丢高位回卷到 0，后半行的字会显示成前面的字。
+                S_par_idx = {1'b0, S_x_2d[8:4]} - 5'd11;
+                S_par_col = S_x_2d[3:0];
+                S_par_row = S_y_2d[3:0] - 4'd8;
+
+                case(S_par_idx)
+                    5'd0 :   S_pf_char = 8'h53;        // 'S'
+                    5'd1 :   S_pf_char = 8'h2d;        // '-'（osd_char_lib 本次新增的字形）
+                    5'd2 :   S_pf_char = 8'h43;        // 'C'
+                    5'd3 :   S_pf_char = 8'h55;        // 'U'
+                    5'd4 :   S_pf_char = 8'h52;        // 'R'
+                    5'd5 :   S_pf_char = 8'h56;        // 'V'
+                    5'd6 :   S_pf_char = 8'h45;        // 'E'
+                    5'd7 :   S_pf_char = 8'h20;        // 空格
+                    5'd8 :   S_pf_char = 8'h4f;        // 'O'
+                    5'd9 :   S_pf_char = S_par_c9;     // 'N'(ON) / 'F'(OFF)
+                    5'd10:   S_pf_char = S_par_c10;    // ' ' / 'F'
+                    5'd11:   S_pf_char = 8'h20;        // 空格
+                    5'd12:   S_pf_char = 8'h4c;        // 'L'
+                    5'd13:   S_pf_char = 8'h53;        // 'S'
+                    5'd14:   S_pf_char = 8'h43;        // 'C'
+                    5'd15:   S_pf_char = 8'h20;        // 空格
+                    5'd16:   S_pf_char = 8'h4f;        // 'O'
+                    5'd17:   S_pf_char = S_par_c17;    // 'N' / 'F'
+                    5'd18:   S_pf_char = S_par_c18;    // ' ' / 'F'
+                    5'd19:   S_pf_char = 8'h20;        // 空格
+                    5'd20:   S_pf_char = 8'h47;        // 'G'
+                    5'd21:   S_pf_char = 8'h4f;        // 'O'  [PAR-OSD 改] 原 'A'
+                    5'd22:   S_pf_char = 8'h54;        // 'T'  [PAR-OSD 改] 原 'I'
+                    5'd23:   S_pf_char = 8'h3a;        // ':'  [PAR-OSD 改] 原 'N'
+                    5'd24:   S_pf_char = S_par_c24;    // [PAR-OSD 改] '1'=MOT ON / '0'=MOT OFF
+                    5'd25:   S_pf_char = 8'h20;        // 空格
+                    5'd26:   S_pf_char = 8'h53;        // 'S'  [PAR-OSD 改] 原 'A'
+                    5'd27:   S_pf_char = 8'h45;        // 'E'
+                    5'd28:   S_pf_char = 8'h4e;        // 'N'  [PAR-OSD 改] 原空格
+                    5'd29:   S_pf_char = 8'h53;        // 'S'  [PAR-OSD 改] 原 'O'
+                    5'd30:   S_pf_char = S_par_c30;    // [PAR-OSD 改] 固定空格
+                    5'd31:   S_pf_char = S_par_c31;    // [PAR-OSD 改] 'H'=严格 / 'L'=宽松
+                    default: S_pf_char = 8'h20;        // 越界补空格
+                endcase
+
+                S_pf_row = S_par_row;
+                case(S_par_col)   // 16 选 1：bit15 = 该行最左列（与其余各层同一约定）
+                    4'd0 :   S_pf_on = S_pf_row_bits[15];
+                    4'd1 :   S_pf_on = S_pf_row_bits[14];
+                    4'd2 :   S_pf_on = S_pf_row_bits[13];
+                    4'd3 :   S_pf_on = S_pf_row_bits[12];
+                    4'd4 :   S_pf_on = S_pf_row_bits[11];
+                    4'd5 :   S_pf_on = S_pf_row_bits[10];
+                    4'd6 :   S_pf_on = S_pf_row_bits[9];
+                    4'd7 :   S_pf_on = S_pf_row_bits[8];
+                    4'd8 :   S_pf_on = S_pf_row_bits[7];
+                    4'd9 :   S_pf_on = S_pf_row_bits[6];
+                    4'd10:   S_pf_on = S_pf_row_bits[5];
+                    4'd11:   S_pf_on = S_pf_row_bits[4];
+                    4'd12:   S_pf_on = S_pf_row_bits[3];
+                    4'd13:   S_pf_on = S_pf_row_bits[2];
+                    4'd14:   S_pf_on = S_pf_row_bits[1];
+                    4'd15:   S_pf_on = S_pf_row_bits[0];
+                    default: S_pf_on = 1'b0;
+                endcase
+
+                if(S_pf_on) begin
+                    S_osd_hit   = 1'b1;
+                    S_osd_color = COLOR_PAR_TEXT;
+                end
+            end
+        end
+        // ---- [HDR-2026-10-15] \u7b2c 5 \u5c42\uff1a\u8fd0\u52a8\u5757\u8fb9\u754c\u63cf\u8fb9\uff08\u6700\u4f4e\u4f18\u5148\u7ea7\uff0c\u4e0d\u906e\u9065\u6d4b\u6587\u5b57\uff09----
+        //   \u5757\u7f51\u683c 16x9\u3001\u5757\u5c3a\u5bf8 80x80\uff0c\u4e0e motion_detect.v \u7684 BEATS_PER_BLK=20*4px \u5bf9\u9f50\u3002
+        //   \u5757\u7d22\u5f15 = 15+8 \u4e2a\u6bd4\u8f83\u5668\u6c42\u548c\uff1b\u5757\u5185\u504f\u79fb\u7528 bx*80=(bx<<6)+(bx<<4) \u8fd8\u539f => \u96f6\u9664\u6cd5\u5668\u3002
+        // \u5757\u7d22\u5f15\uff1a\u6bcf\u4e00\u9879\u663e\u5f0f\u8865\u96f6\u5230\u76ee\u6807\u4f4d\u5bbd\uff0c\u907f\u514d Verilog \u628a 1bit \u52a0\u6cd5\u94fe\u6309 1bit \u8ba1\u7b97
         S_mot_bx = 5'd0
                  + {4'b0,(S_x_2d>=12'd80 )} + {4'b0,(S_x_2d>=12'd160)}
                  + {4'b0,(S_x_2d>=12'd240)} + {4'b0,(S_x_2d>=12'd320)}
@@ -1440,10 +1615,10 @@ module hdmi_mixer #(
                  + {3'b0,(S_y_2d>=12'd240)} + {3'b0,(S_y_2d>=12'd320)}
                  + {3'b0,(S_y_2d>=12'd400)} + {3'b0,(S_y_2d>=12'd480)}
                  + {3'b0,(S_y_2d>=12'd560)} + {3'b0,(S_y_2d>=12'd640)};
-        // 块内偏移：bx*80 = (bx<<6)+(bx<<4)，无除法器
+        // \u5757\u5185\u504f\u79fb\uff1abx*80 = (bx<<6)+(bx<<4)\uff0c\u65e0\u9664\u6cd5\u5668
         S_mot_xoff = S_x_2d - {S_mot_bx, 6'b0} - {{1'b0, S_mot_bx}, 4'b0};
         S_mot_yoff = S_y_2d - {S_mot_by, 6'b0} - {1'b0, S_mot_by, 4'b0};
-        // 掩码布局是 idx = by*16 + bx（见 motion_detect.v），bx 取低 4 位
+        // \u63a9\u7801\u5e03\u5c40\u662f idx = by*16 + bx\uff08\u89c1 motion_detect.v\uff09\uff0cbx \u53d6\u4f4e 4 \u4f4d
         S_mot_on   = I_mot_en && I_mot_mask[{1'b0, S_mot_by, S_mot_bx[3:0]}] &&
                      ( (S_mot_xoff < 12'd3) || (S_mot_xoff > 12'd76) ||
                        (S_mot_yoff < 12'd3) || (S_mot_yoff > 12'd76) );
