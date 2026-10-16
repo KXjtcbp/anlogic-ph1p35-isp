@@ -1,0 +1,29 @@
+        // ---- [HDR-2026-10-15] \u7b2c 5 \u5c42\uff1a\u8fd0\u52a8\u5757\u8fb9\u754c\u63cf\u8fb9\uff08\u6700\u4f4e\u4f18\u5148\u7ea7\uff0c\u4e0d\u906e\u9065\u6d4b\u6587\u5b57\uff09----
+        //   \u5757\u7f51\u683c 16x9\u3001\u5757\u5c3a\u5bf8 80x80\uff0c\u4e0e motion_detect.v \u7684 BEATS_PER_BLK=20*4px \u5bf9\u9f50\u3002
+        //   \u5757\u7d22\u5f15 = 15+8 \u4e2a\u6bd4\u8f83\u5668\u6c42\u548c\uff1b\u5757\u5185\u504f\u79fb\u7528 bx*80=(bx<<6)+(bx<<4) \u8fd8\u539f => \u96f6\u9664\u6cd5\u5668\u3002
+        // \u5757\u7d22\u5f15\uff1a\u6bcf\u4e00\u9879\u663e\u5f0f\u8865\u96f6\u5230\u76ee\u6807\u4f4d\u5bbd\uff0c\u907f\u514d Verilog \u628a 1bit \u52a0\u6cd5\u94fe\u6309 1bit \u8ba1\u7b97
+        S_mot_bx = 5'd0
+                 + {4'b0,(S_x_2d>=12'd80 )} + {4'b0,(S_x_2d>=12'd160)}
+                 + {4'b0,(S_x_2d>=12'd240)} + {4'b0,(S_x_2d>=12'd320)}
+                 + {4'b0,(S_x_2d>=12'd400)} + {4'b0,(S_x_2d>=12'd480)}
+                 + {4'b0,(S_x_2d>=12'd560)} + {4'b0,(S_x_2d>=12'd640)}
+                 + {4'b0,(S_x_2d>=12'd720)} + {4'b0,(S_x_2d>=12'd800)}
+                 + {4'b0,(S_x_2d>=12'd880)} + {4'b0,(S_x_2d>=12'd960)}
+                 + {4'b0,(S_x_2d>=12'd1040)}+ {4'b0,(S_x_2d>=12'd1120)}
+                 + {4'b0,(S_x_2d>=12'd1200)};
+        S_mot_by = 4'd0
+                 + {3'b0,(S_y_2d>=12'd80 )} + {3'b0,(S_y_2d>=12'd160)}
+                 + {3'b0,(S_y_2d>=12'd240)} + {3'b0,(S_y_2d>=12'd320)}
+                 + {3'b0,(S_y_2d>=12'd400)} + {3'b0,(S_y_2d>=12'd480)}
+                 + {3'b0,(S_y_2d>=12'd560)} + {3'b0,(S_y_2d>=12'd640)};
+        // \u5757\u5185\u504f\u79fb\uff1abx*80 = (bx<<6)+(bx<<4)\uff0c\u65e0\u9664\u6cd5\u5668
+        S_mot_xoff = S_x_2d - {S_mot_bx, 6'b0} - {{1'b0, S_mot_bx}, 4'b0};
+        S_mot_yoff = S_y_2d - {S_mot_by, 6'b0} - {1'b0, S_mot_by, 4'b0};
+        // \u63a9\u7801\u5e03\u5c40\u662f idx = by*16 + bx\uff08\u89c1 motion_detect.v\uff09\uff0cbx \u53d6\u4f4e 4 \u4f4d
+        S_mot_on   = I_mot_en && I_mot_mask[{1'b0, S_mot_by, S_mot_bx[3:0]}] &&
+                     ( (S_mot_xoff < 12'd3) || (S_mot_xoff > 12'd76) ||
+                       (S_mot_yoff < 12'd3) || (S_mot_yoff > 12'd76) );
+        if(S_mot_on) begin
+            S_osd_hit   = 1'b1;
+            S_osd_color = COLOR_MOT_TEXT;
+        end
