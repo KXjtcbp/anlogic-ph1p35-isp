@@ -46,15 +46,14 @@ module obj_detect #(
     wire [7:0] p2r = I_tdata[71:64], p2g = I_tdata[63:56], p2b = I_tdata[55:48];
     wire [7:0] p3r = I_tdata[95:88], p3g = I_tdata[87:80], p3b = I_tdata[79:72];
 
-    wire [7:0] rg0 = p0r - p0g, rb0 = p0r - p0b;
-    wire [7:0] rg1 = p1r - p1g, rb1 = p1r - p1b;
-    wire [7:0] rg2 = p2r - p2g, rb2 = p2r - p2b;
-    wire [7:0] rg3 = p3r - p3g, rb3 = p3r - p3b;
-
-    wire h0 = (p0r >= LUM_MIN) && (rg0 >= CHR_MIN) && (rb0 >= CHR_MIN);
-    wire h1 = (p1r >= LUM_MIN) && (rg1 >= CHR_MIN) && (rb1 >= CHR_MIN);
-    wire h2 = (p2r >= LUM_MIN) && (rg2 >= CHR_MIN) && (rb2 >= CHR_MIN);
-    wire h3 = (p3r >= LUM_MIN) && (rg3 >= CHR_MIN) && (rb3 >= CHR_MIN);
+    // ★ [HDR-2026-10-17-fixwrap] 9 位扩位加法比较 ★
+    //   原来用 8bit 无符号减法 p0r-p0g，当 G>R 时回绕成 200+ ⇒ 恒满足 >=CHR_MIN
+    //   ⇒ 暗场景大量「R 比 G 小」的像素被判成红色 ⇒ 绿框乱跳。
+    //   改成 {1'b0,R} >= {1'b0,G} + CHR_MIN，在 9 位域比较，结构上不可能回绕。
+    wire h0 = (p0r >= LUM_MIN) && ({1'b0,p0r} >= ({1'b0,p0g} + {1'b0,CHR_MIN})) && ({1'b0,p0r} >= ({1'b0,p0b} + {1'b0,CHR_MIN}));
+    wire h1 = (p1r >= LUM_MIN) && ({1'b0,p1r} >= ({1'b0,p1g} + {1'b0,CHR_MIN})) && ({1'b0,p1r} >= ({1'b0,p1b} + {1'b0,CHR_MIN}));
+    wire h2 = (p2r >= LUM_MIN) && ({1'b0,p2r} >= ({1'b0,p2g} + {1'b0,CHR_MIN})) && ({1'b0,p2r} >= ({1'b0,p2b} + {1'b0,CHR_MIN}));
+    wire h3 = (p3r >= LUM_MIN) && ({1'b0,p3r} >= ({1'b0,p3g} + {1'b0,CHR_MIN})) && ({1'b0,p3r} >= ({1'b0,p3b} + {1'b0,CHR_MIN}));
     wire [2:0] hit4 = {2'b00, h0} + {2'b00, h1} + {2'b00, h2} + {2'b00, h3};
 
     // ------------------------------------------------------------------
@@ -67,9 +66,15 @@ module obj_detect #(
     reg [3:0]  S_byn;     // 块行 0..8
     reg [6:0]  S_lyc;     // 块内行 0..79
 
-    wire S_line_end = I_tvalid & I_tlast;
-    wire S_beat_last = (S_bxc == (BEATS_PER_BLK - 5'd1)) | S_line_end;
-    wire S_line_last = (S_lyc == (LINES_PER_BLK - 7'd1)) | S_line_end;
+    // ★ [HDR-2026-10-17-rowfix] ★ 关键修正
+    //   原来把 I_tlast 当成「行末」，但 AXI4-Stream 视频包里 I_tlast 是「帧末」，
+    //   一帧只来一次 ⇒ S_lyc/S_byn 变成「每帧 +1」⇒ 一个帧内 S_byn 恒定，
+    //   掩码只写同一行；跨 720 帧轮完 9 行后，画面上就看到「一整列贯穿全帧」。
+    //   现在：行末用 S_bx 走满 H_BEATS-1 判定，I_tlast 只当帧末用。
+    wire S_row_end   = (S_bx == (H_BEATS - 9'd1));              // 一行最后一个 beat
+    wire S_line_end  = I_tvalid & I_tlast;                     // 帧末（保留原义）
+    wire S_beat_last = (S_bxc == (BEATS_PER_BLK - 5'd1));      // 纯块列末
+    wire S_lyc_last  = (S_lyc == (LINES_PER_BLK - 7'd1));      // 块内最后一行
 
     always @(posedge I_clk or negedge I_rst_n) begin
         if (!I_rst_n) begin
@@ -80,24 +85,22 @@ module obj_detect #(
                 S_bx <= 9'd0; S_y <= 12'd0; S_bxn <= 5'd0; S_bxc <= 5'd0;
                 S_byn <= 4'd0; S_lyc <= 7'd0;
             end else begin
-                S_bx <= (S_bx == (H_BEATS - 9'd1)) ? 9'd0 : (S_bx + 9'd1);
-                if (S_line_end) begin
+                S_bx <= S_row_end ? 9'd0 : (S_bx + 9'd1);
+                if (S_row_end) begin                       // ★ 行末 ★
                     S_y   <= (S_y == (V_LINES - 12'd1)) ? 12'd0 : (S_y + 12'd1);
                     S_bxc <= 5'd0;
-                    S_bxn <= (S_bxn == 5'd15) ? 5'd0 : (S_bxn + 5'd1);
-                    if (S_line_last) begin
+                    S_bxn <= 5'd0;
+                    if (S_lyc_last) begin                  // 块内最后一行 ⇒ 换块行
                         S_lyc <= 7'd0;
                         S_byn <= (S_byn == 4'd8) ? 4'd0 : (S_byn + 4'd1);
                     end else begin
                         S_lyc <= S_lyc + 7'd1;
                     end
+                end else if (S_beat_last) begin            // 块列末
+                    S_bxc <= 5'd0;
+                    S_bxn <= (S_bxn == 5'd15) ? 5'd0 : (S_bxn + 5'd1);
                 end else begin
-                    if (S_beat_last) begin
-                        S_bxc <= 5'd0;
-                        S_bxn <= (S_bxn == 5'd15) ? 5'd0 : (S_bxn + 5'd1);
-                    end else begin
-                        S_bxc <= S_bxc + 5'd1;
-                    end
+                    S_bxc <= S_bxc + 5'd1;
                 end
             end
         end
@@ -128,28 +131,29 @@ module obj_detect #(
     wire [12:0] S_inc = {10'd0, hit4};
 
     // 块列边界（一个块的最后一 beat）：把累加器清零
-    wire S_col_last = (S_bxc == (BEATS_PER_BLK - 5'd1));
+    wire S_col_last = S_beat_last;
+    wire S_blk_end  = S_beat_last & S_lyc_last;   // ★ [fix8] 80x80 块真正的最后 beat ★
     // 整帧首个有效 beat 之前的复位
     wire S_frame_start = I_tvalid & I_tuser;
 
     // 用「每个块列边界清零 + 其余时间累加」的方式实现 16 路累加
     // 注意：同一 always 块内同一 reg 只能有一次非阻塞赋值，所以先算 next 再统一写
-    wire [12:0] S_acc0_nx  = S_col_sel[0]  ? (S_col_last ? 13'd0 : (S_acc0  + S_inc)) : S_acc0;
-    wire [12:0] S_acc1_nx  = S_col_sel[1]  ? (S_col_last ? 13'd0 : (S_acc1  + S_inc)) : S_acc1;
-    wire [12:0] S_acc2_nx  = S_col_sel[2]  ? (S_col_last ? 13'd0 : (S_acc2  + S_inc)) : S_acc2;
-    wire [12:0] S_acc3_nx  = S_col_sel[3]  ? (S_col_last ? 13'd0 : (S_acc3  + S_inc)) : S_acc3;
-    wire [12:0] S_acc4_nx  = S_col_sel[4]  ? (S_col_last ? 13'd0 : (S_acc4  + S_inc)) : S_acc4;
-    wire [12:0] S_acc5_nx  = S_col_sel[5]  ? (S_col_last ? 13'd0 : (S_acc5  + S_inc)) : S_acc5;
-    wire [12:0] S_acc6_nx  = S_col_sel[6]  ? (S_col_last ? 13'd0 : (S_acc6  + S_inc)) : S_acc6;
-    wire [12:0] S_acc7_nx  = S_col_sel[7]  ? (S_col_last ? 13'd0 : (S_acc7  + S_inc)) : S_acc7;
-    wire [12:0] S_acc8_nx  = S_col_sel[8]  ? (S_col_last ? 13'd0 : (S_acc8  + S_inc)) : S_acc8;
-    wire [12:0] S_acc9_nx  = S_col_sel[9]  ? (S_col_last ? 13'd0 : (S_acc9  + S_inc)) : S_acc9;
-    wire [12:0] S_acc10_nx = S_col_sel[10] ? (S_col_last ? 13'd0 : (S_acc10 + S_inc)) : S_acc10;
-    wire [12:0] S_acc11_nx = S_col_sel[11] ? (S_col_last ? 13'd0 : (S_acc11 + S_inc)) : S_acc11;
-    wire [12:0] S_acc12_nx = S_col_sel[12] ? (S_col_last ? 13'd0 : (S_acc12 + S_inc)) : S_acc12;
-    wire [12:0] S_acc13_nx = S_col_sel[13] ? (S_col_last ? 13'd0 : (S_acc13 + S_inc)) : S_acc13;
-    wire [12:0] S_acc14_nx = S_col_sel[14] ? (S_col_last ? 13'd0 : (S_acc14 + S_inc)) : S_acc14;
-    wire [12:0] S_acc15_nx = S_col_sel[15] ? (S_col_last ? 13'd0 : (S_acc15 + S_inc)) : S_acc15;
+    wire [12:0] S_acc0_nx  = S_col_sel[0]  ? (S_blk_end ? 13'd0 : (S_acc0  + S_inc)) : S_acc0;
+    wire [12:0] S_acc1_nx  = S_col_sel[1]  ? (S_blk_end ? 13'd0 : (S_acc1  + S_inc)) : S_acc1;
+    wire [12:0] S_acc2_nx  = S_col_sel[2]  ? (S_blk_end ? 13'd0 : (S_acc2  + S_inc)) : S_acc2;
+    wire [12:0] S_acc3_nx  = S_col_sel[3]  ? (S_blk_end ? 13'd0 : (S_acc3  + S_inc)) : S_acc3;
+    wire [12:0] S_acc4_nx  = S_col_sel[4]  ? (S_blk_end ? 13'd0 : (S_acc4  + S_inc)) : S_acc4;
+    wire [12:0] S_acc5_nx  = S_col_sel[5]  ? (S_blk_end ? 13'd0 : (S_acc5  + S_inc)) : S_acc5;
+    wire [12:0] S_acc6_nx  = S_col_sel[6]  ? (S_blk_end ? 13'd0 : (S_acc6  + S_inc)) : S_acc6;
+    wire [12:0] S_acc7_nx  = S_col_sel[7]  ? (S_blk_end ? 13'd0 : (S_acc7  + S_inc)) : S_acc7;
+    wire [12:0] S_acc8_nx  = S_col_sel[8]  ? (S_blk_end ? 13'd0 : (S_acc8  + S_inc)) : S_acc8;
+    wire [12:0] S_acc9_nx  = S_col_sel[9]  ? (S_blk_end ? 13'd0 : (S_acc9  + S_inc)) : S_acc9;
+    wire [12:0] S_acc10_nx = S_col_sel[10] ? (S_blk_end ? 13'd0 : (S_acc10 + S_inc)) : S_acc10;
+    wire [12:0] S_acc11_nx = S_col_sel[11] ? (S_blk_end ? 13'd0 : (S_acc11 + S_inc)) : S_acc11;
+    wire [12:0] S_acc12_nx = S_col_sel[12] ? (S_blk_end ? 13'd0 : (S_acc12 + S_inc)) : S_acc12;
+    wire [12:0] S_acc13_nx = S_col_sel[13] ? (S_blk_end ? 13'd0 : (S_acc13 + S_inc)) : S_acc13;
+    wire [12:0] S_acc14_nx = S_col_sel[14] ? (S_blk_end ? 13'd0 : (S_acc14 + S_inc)) : S_acc14;
+    wire [12:0] S_acc15_nx = S_col_sel[15] ? (S_blk_end ? 13'd0 : (S_acc15 + S_inc)) : S_acc15;
 
     // ------------------------------------------------------------------
     // ★ [HDR-2026-10-17-fix] 块判决值必须用「含最后一 beat 的当前和」★
@@ -176,7 +180,10 @@ module obj_detect #(
     wire [12:0] S_acc15_fin = S_acc15 + S_inc;
 
     // 块结束那拍无条件锁存（不再 & S_add）
-    wire S_blk_hit = S_col_last;
+    wire S_blk_hit = S_blk_end;
+
+    reg [143:0] S_now;      // [fix8] 本帧原始判决
+    reg [143:0] S_prev;     // [fix8] 上一帧原始判决
 
     wire [143:0] S_hit_vec = {
         (S_acc15_fin >= HIT_MIN), (S_acc14_fin >= HIT_MIN), (S_acc13_fin >= HIT_MIN), (S_acc12_fin >= HIT_MIN),
@@ -199,6 +206,8 @@ module obj_detect #(
             O_blk_cnt  <= 8'd0;
             O_obj_any  <= 1'b0;
             O_hit_sum  <= 16'd0;
+            S_now      <= 144'd0;
+            S_prev     <= 144'd0;
         end else begin
             // 累加（块列边界那拍清零，同时该块的判定结果写入下面）
             S_acc0  <= S_frame_start ? 13'd0 : S_acc0_nx;
@@ -221,28 +230,30 @@ module obj_detect #(
             // 每个块判定完成时把该列对应的掩码位更新
             if (S_blk_hit) begin
                 case (S_bxn)
-                    5'd0:  O_blk_mask[{S_byn, 4'd0 }] <= S_hit_vec[0 ];
-                    5'd1:  O_blk_mask[{S_byn, 4'd1 }] <= S_hit_vec[1 ];
-                    5'd2:  O_blk_mask[{S_byn, 4'd2 }] <= S_hit_vec[2 ];
-                    5'd3:  O_blk_mask[{S_byn, 4'd3 }] <= S_hit_vec[3 ];
-                    5'd4:  O_blk_mask[{S_byn, 4'd4 }] <= S_hit_vec[4 ];
-                    5'd5:  O_blk_mask[{S_byn, 4'd5 }] <= S_hit_vec[5 ];
-                    5'd6:  O_blk_mask[{S_byn, 4'd6 }] <= S_hit_vec[6 ];
-                    5'd7:  O_blk_mask[{S_byn, 4'd7 }] <= S_hit_vec[7 ];
-                    5'd8:  O_blk_mask[{S_byn, 4'd8 }] <= S_hit_vec[8 ];
-                    5'd9:  O_blk_mask[{S_byn, 4'd9 }] <= S_hit_vec[9 ];
-                    5'd10: O_blk_mask[{S_byn, 4'd10}] <= S_hit_vec[10];
-                    5'd11: O_blk_mask[{S_byn, 4'd11}] <= S_hit_vec[11];
-                    5'd12: O_blk_mask[{S_byn, 4'd12}] <= S_hit_vec[12];
-                    5'd13: O_blk_mask[{S_byn, 4'd13}] <= S_hit_vec[13];
-                    5'd14: O_blk_mask[{S_byn, 4'd14}] <= S_hit_vec[14];
-                    default: O_blk_mask[{S_byn, 4'd15}] <= S_hit_vec[15];
+                    5'd0:  S_now[{S_byn, 4'd0 }] <= S_hit_vec[0 ];
+                    5'd1:  S_now[{S_byn, 4'd1 }] <= S_hit_vec[1 ];
+                    5'd2:  S_now[{S_byn, 4'd2 }] <= S_hit_vec[2 ];
+                    5'd3:  S_now[{S_byn, 4'd3 }] <= S_hit_vec[3 ];
+                    5'd4:  S_now[{S_byn, 4'd4 }] <= S_hit_vec[4 ];
+                    5'd5:  S_now[{S_byn, 4'd5 }] <= S_hit_vec[5 ];
+                    5'd6:  S_now[{S_byn, 4'd6 }] <= S_hit_vec[6 ];
+                    5'd7:  S_now[{S_byn, 4'd7 }] <= S_hit_vec[7 ];
+                    5'd8:  S_now[{S_byn, 4'd8 }] <= S_hit_vec[8 ];
+                    5'd9:  S_now[{S_byn, 4'd9 }] <= S_hit_vec[9 ];
+                    5'd10: S_now[{S_byn, 4'd10}] <= S_hit_vec[10];
+                    5'd11: S_now[{S_byn, 4'd11}] <= S_hit_vec[11];
+                    5'd12: S_now[{S_byn, 4'd12}] <= S_hit_vec[12];
+                    5'd13: S_now[{S_byn, 4'd13}] <= S_hit_vec[13];
+                    5'd14: S_now[{S_byn, 4'd14}] <= S_hit_vec[14];
+                    default: S_now[{S_byn, 4'd15}] <= S_hit_vec[15];
                 endcase
             end
 
             // bypass：清空（SW 一拨下就立刻没框，不是冻结）
             if (I_bypass) begin
                 O_blk_mask <= 144'd0;
+                S_now      <= 144'd0;
+                S_prev     <= 144'd0;
                 O_blk_cnt  <= 8'd0;
                 O_obj_any  <= 1'b0;
                 O_hit_sum  <= 16'd0;
@@ -260,14 +271,22 @@ module obj_detect #(
             // ★ [HDR-2026-10-17-fix2] 必须限定在「块行最后一行」才计数 ★
             //   因为 S_bxc 每 20 beat 归零一次，一帧里同一列会被判 80 次/块行，
             //   不限定就会重复计 80 倍（TB 实测 saturate 到 255，期望 72）。
-            if (S_blk_hit && S_hit_vec[S_bxn] && (S_lyc == (LINES_PER_BLK - 7'd1)))
+            if (S_blk_hit && S_hit_vec[S_bxn])   // [fix8] S_blk_hit 已含块内最后一行
                 O_blk_cnt <= (O_blk_cnt == 8'd255) ? 8'd255 : (O_blk_cnt + 8'd1);
 
             // 帧末更新 obj_any
             // ★ [HDR-2026-10-17-fix3] 改成「由掩码直接组合产生」，不再依赖块计数 ★
             //   块计数的精确统计依赖 S_lyc 与 S_bxc 的相位对齐，TB 里验证到掩码正确
             //   但计数会退化；obj_any 是 OSD/上层的唯一用途，直接用掩码最可靠。
-            O_obj_any <= (O_blk_mask != 144'd0);
+            // ★ [fix8] 帧末合成：本帧 & 上一帧 ⇒ 单帧噪声被滤掉 ★
+            if (S_line_end && (S_y == (V_LINES - 12'd1))) begin
+                O_blk_mask <= S_now & S_prev;
+                S_prev     <= S_now;
+                S_now      <= 144'd0;
+            end
+            // obj_any 在帧末由新掩码决定（见上面的帧末块）
+            if (S_line_end && (S_y == (V_LINES - 12'd1)))
+                O_obj_any <= ((S_now & S_prev) != 144'd0);
         end
     end
 

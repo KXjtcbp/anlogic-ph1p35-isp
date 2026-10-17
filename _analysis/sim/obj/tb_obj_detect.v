@@ -101,7 +101,10 @@ module tb_obj_detect;
         rst_n = 1'b1;
         repeat (5) @(posedge clk);
 
-        send_frame(1);
+        send_frame(1);          // 第 1 帧：建立 S_prev
+        repeat (5) @(posedge clk);
+        #1;
+        send_frame(1);          // 第 2 帧：两帧确认后才输出（fix5 的行为）
         repeat (5) @(posedge clk);
         #1;
 
@@ -124,16 +127,19 @@ module tb_obj_detect;
         chk("any   1",  obj_any,  1);
 
         // 第二帧：全黑 ⇒ 掩码应全 0
-        for (i = 0; i < 720; i = i + 1) begin
-            for (x = 0; x < 320; x = x + 1) begin
-                tvalid = 1'b1;
-                tuser  = (i == 0 && x == 0);
-                tlast  = (x == 319);
-                tdata  = {4{24'h0A0A0A}};
-                @(posedge clk); #1;
+        for (b = 0; b < 2; b = b + 1) begin
+            for (i = 0; i < 720; i = i + 1) begin
+                for (x = 0; x < 320; x = x + 1) begin
+                    tvalid = 1'b1;
+                    tuser  = (i == 0 && x == 0);
+                    tlast  = (x == 319) && (i == 719);
+                    tdata  = {4{24'h0A0A0A}};
+                    @(posedge clk); #1;
+                end
+                tvalid = 1'b0; tuser = 1'b0; tlast = 1'b0;
+                repeat (2) @(posedge clk); #1;
             end
-            tvalid = 1'b0; tuser = 1'b0; tlast = 1'b0;
-            repeat (2) @(posedge clk); #1;
+            repeat (5) @(posedge clk);
         end
         repeat (5) @(posedge clk); #1;
         one_cnt = 0;

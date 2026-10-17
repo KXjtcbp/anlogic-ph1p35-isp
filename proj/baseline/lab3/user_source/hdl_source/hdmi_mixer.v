@@ -361,6 +361,23 @@ localparam COLOR_OBJ_TEXT = 24'h00ff40; // [HDR-2026-10-17] 目标检测框绿
     reg  [11:0] S_obj_yoff;
     reg         S_obj_on;
 
+    // ★ [HDR-2026-10-17-bb] 只画「命中块集合的外轮廓」+ 每块内缩 10px ★
+    //   原实现每个命中块都画一个 80x80 的整框 ⇒ 一片参差小框、且框比目标宽 1~3 倍。
+    //   现在：只在「该块与相邻块不同时命中」的那一侧画边，并把边内缩 10px（屏幕 15px），
+    //   视觉上变成一个连成一体、贴着目标轮廓的紧框。
+    wire [8:0] O_self = {1'b0, S_obj_by, S_obj_bx[3:0]};
+    wire [8:0] O_left = (S_obj_bx[3:0] == 4'd0 ) ? 9'h1FF : {1'b0, S_obj_by, S_obj_bx[3:0] - 4'd1};
+    wire [8:0] O_rgt  = (S_obj_bx[3:0] == 4'd15) ? 9'h1FF : {1'b0, S_obj_by, S_obj_bx[3:0] + 4'd1};
+    wire [8:0] O_up   = (S_obj_by      == 4'd0 ) ? 9'h1FF : {1'b0, S_obj_by - 4'd1, S_obj_bx[3:0]};
+    wire [8:0] O_dn   = (S_obj_by      == 4'd8 ) ? 9'h1FF : {1'b0, S_obj_by + 4'd1, S_obj_bx[3:0]};
+    wire       obj_self = I_obj_mask[O_self];
+    wire       obj_lft  = (O_left == 9'h1FF) ? 1'b0 : I_obj_mask[O_left];
+    wire       obj_rgt  = (O_rgt  == 9'h1FF) ? 1'b0 : I_obj_mask[O_rgt ];
+    wire       obj_up   = (O_up   == 9'h1FF) ? 1'b0 : I_obj_mask[O_up  ];
+    wire       obj_dn   = (O_dn   == 9'h1FF) ? 1'b0 : I_obj_mask[O_dn  ];
+    wire       obj_in   = (S_obj_xoff >= 12'd10) && (S_obj_xoff <= 12'd69) &&
+                          (S_obj_yoff >= 12'd10) && (S_obj_yoff <= 12'd69);
+
     //------------------------------------------------------------------------
     // [PAR-OSD 2026-10-15] 第 6 层：实时参数行（四个拨动开关的已生效状态 + 数字增益档）
     //   定长 32 字符，索引 0..31：
@@ -1652,9 +1669,11 @@ localparam COLOR_OBJ_TEXT = 24'h00ff40; // [HDR-2026-10-17] 目标检测框绿
                  + {3'b0,(S_y_2d>=12'd560)} + {3'b0,(S_y_2d>=12'd640)};
         S_obj_xoff = S_x_2d - {S_obj_bx, 6'b0} - {{1'b0, S_obj_bx}, 4'b0};
         S_obj_yoff = S_y_2d - {S_obj_by, 6'b0} - {1'b0, S_obj_by, 4'b0};
-        S_obj_on   = I_obj_mask[{1'b0, S_obj_by, S_obj_bx[3:0]}] &&
-                     ( (S_obj_xoff < 12'd3) || (S_obj_xoff > 12'd76) ||
-                       (S_obj_yoff < 12'd3) || (S_obj_yoff > 12'd76) );
+        S_obj_on   = obj_self && obj_in && (
+                   ( ((S_obj_xoff == 12'd10) || (S_obj_xoff == 12'd11)) && ~obj_lft ) ||
+                   ( ((S_obj_xoff == 12'd68) || (S_obj_xoff == 12'd69)) && ~obj_rgt ) ||
+                   ( ((S_obj_yoff == 12'd10) || (S_obj_yoff == 12'd11)) && ~obj_up  ) ||
+                   ( ((S_obj_yoff == 12'd68) || (S_obj_yoff == 12'd69)) && ~obj_dn  ) );
         if(S_obj_on) begin
             S_osd_hit   = 1'b1;
             S_osd_color = COLOR_OBJ_TEXT;
