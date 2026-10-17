@@ -107,6 +107,8 @@ module hdmi_mixer #(
     input wire [143:0] I_mot_mask,
     input wire [7:0]   I_mot_cnt,
     input wire         I_mot_en,   // 0 = 整层不显示（SW3 关）
+    input wire [143:0] I_obj_mask, // [HDR-2026-10-17] 颜色目标检测块掩码
+    input wire [7:0]   I_obj_cnt,  // [HDR-2026-10-17] 命中块数
 
     // [PAR-OSD 2026-10-15] 第 6 层「实时参数行」的输入：四个拨动开关的「已生效」电平。
     //   ★位序与顶层 S_gain_applied 的拼接顺序严格一致★：
@@ -285,6 +287,7 @@ module hdmi_mixer #(
     localparam DBG_OSD_H      = 12'd10;    // 字形 7 行，窗口留 10
     localparam COLOR_DBG_TEXT = 24'hff8000; // 橙色
     localparam COLOR_MOT_TEXT = 24'hff2020; // 运动块描边红
+localparam COLOR_OBJ_TEXT = 24'h00ff40; // [HDR-2026-10-17] 目标检测框绿
 
     reg [48:0] S_dbg_1d;   // 遥测总线 2 级同步（准静态信号，无需握手）
     reg [48:0] S_dbg_2d;
@@ -352,6 +355,11 @@ module hdmi_mixer #(
     reg  [11:0] S_mot_xoff;
     reg  [11:0] S_mot_yoff;
     reg         S_mot_on;
+    reg  [4:0]  S_obj_bx;   // [HDR-2026-10-17] 第 7 层：目标检测框
+    reg  [3:0]  S_obj_by;
+    reg  [11:0] S_obj_xoff;
+    reg  [11:0] S_obj_yoff;
+    reg         S_obj_on;
 
     //------------------------------------------------------------------------
     // [PAR-OSD 2026-10-15] 第 6 层：实时参数行（四个拨动开关的已生效状态 + 数字增益档）
@@ -1625,6 +1633,31 @@ module hdmi_mixer #(
         if(S_mot_on) begin
             S_osd_hit   = 1'b1;
             S_osd_color = COLOR_MOT_TEXT;
+        end
+        // ---- [HDR-2026-10-17] 第 7 层：颜色目标检测块描边（绿色，优先级低于运动框）----
+        //   与第 5 层同一套块索引逻辑，只换掩码源与颜色；块网格 16x9、块尺寸 80x80。
+        S_obj_bx = 5'd0
+                 + {4'b0,(S_x_2d>=12'd80 )} + {4'b0,(S_x_2d>=12'd160)}
+                 + {4'b0,(S_x_2d>=12'd240)} + {4'b0,(S_x_2d>=12'd320)}
+                 + {4'b0,(S_x_2d>=12'd400)} + {4'b0,(S_x_2d>=12'd480)}
+                 + {4'b0,(S_x_2d>=12'd560)} + {4'b0,(S_x_2d>=12'd640)}
+                 + {4'b0,(S_x_2d>=12'd720)} + {4'b0,(S_x_2d>=12'd800)}
+                 + {4'b0,(S_x_2d>=12'd880)} + {4'b0,(S_x_2d>=12'd960)}
+                 + {4'b0,(S_x_2d>=12'd1040)}+ {4'b0,(S_x_2d>=12'd1120)}
+                 + {4'b0,(S_x_2d>=12'd1200)};
+        S_obj_by = 4'd0
+                 + {3'b0,(S_y_2d>=12'd80 )} + {3'b0,(S_y_2d>=12'd160)}
+                 + {3'b0,(S_y_2d>=12'd240)} + {3'b0,(S_y_2d>=12'd320)}
+                 + {3'b0,(S_y_2d>=12'd400)} + {3'b0,(S_y_2d>=12'd480)}
+                 + {3'b0,(S_y_2d>=12'd560)} + {3'b0,(S_y_2d>=12'd640)};
+        S_obj_xoff = S_x_2d - {S_obj_bx, 6'b0} - {{1'b0, S_obj_bx}, 4'b0};
+        S_obj_yoff = S_y_2d - {S_obj_by, 6'b0} - {1'b0, S_obj_by, 4'b0};
+        S_obj_on   = I_obj_mask[{1'b0, S_obj_by, S_obj_bx[3:0]}] &&
+                     ( (S_obj_xoff < 12'd3) || (S_obj_xoff > 12'd76) ||
+                       (S_obj_yoff < 12'd3) || (S_obj_yoff > 12'd76) );
+        if(S_obj_on) begin
+            S_osd_hit   = 1'b1;
+            S_osd_color = COLOR_OBJ_TEXT;
         end
     end
 

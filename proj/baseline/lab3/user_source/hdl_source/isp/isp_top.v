@@ -74,6 +74,12 @@ input  [3:0]    I_mot_rel_shift ,
     //--------------------------------------------------------------------------
     output [19:0]   O_wb_gain_r     ,
     output [19:0]   O_wb_gain_b     ,
+    //----------------------------------------------------------------------
+    // [HDR-2026-10-17] 颜色目标检测（基础扩展项 2）
+    //----------------------------------------------------------------------
+    output [143:0]  O_obj_mask      ,
+    output [7:0]    O_obj_cnt       ,
+    input           I_obj_bypass    ,
 // [HDR-2026-10-15b] ★运动目标检测（帧差法）输出★
 //   144 个运动块位图（16 列 x 9 行，每块 80x80 像素，bit 序号 = row*16+col）
 //   + 本帧运动块计数。由 hdmi_mixer 的 OSD 层读走画框。
@@ -256,6 +262,38 @@ ae_stat u_ae_stat (
     .O_lo_cnt    (O_ae_lo_cnt     ),
     .O_frame_tgl (O_ae_frame_tgl  )
 );
+
+    // ======================================================================
+    // [HDR-2026-10-17] 颜色目标检测（流式分块，纯观察者，不改像素通路）
+    // ======================================================================
+    wire [143:0] obj_mask;
+    wire [7:0]   obj_cnt;
+    wire         obj_any;
+    wire [15:0]  obj_hit_sum;
+
+    obj_detect #(
+        .H_BEATS       (9'd320  ),
+        .V_LINES       (12'd720 ),
+        .BEATS_PER_BLK (5'd20   ),
+        .LINES_PER_BLK (7'd80   ),
+        .LUM_MIN       (8'd80   ),
+        .CHR_MIN       (8'd35   ),
+        .HIT_MIN       (13'd40  )
+    ) u_obj_detect (
+        .I_clk      (axi4s_video_aclk ),
+        .I_rst_n    (I_rst_n          ),
+        .I_bypass   (I_obj_bypass     ),
+        .I_tdata    (m_axis_tdata_96  ),
+        .I_tvalid   (m_axis_tvalid    ),
+        .I_tuser    (m_axis_tuser     ),
+        .I_tlast    (m_axis_tlast     ),
+        .O_blk_mask (obj_mask         ),
+        .O_blk_cnt  (obj_cnt          ),
+        .O_obj_any  (obj_any          ),
+        .O_hit_sum  (obj_hit_sum      )
+    );
+    assign O_obj_mask = obj_mask;
+    assign O_obj_cnt  = obj_cnt;
 
 awb #(
     .IMG_HEIGHT(720 ),

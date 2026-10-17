@@ -958,6 +958,9 @@ assign S_tp_canary = 1'b0;  // [HDR-2026-10-11i] 停用：原为 ~(四开关)，
 // [HDR-2026-10-15b] 运动检测结果（144 块位图 + 计数）
 wire [143:0] S_mot_mask;
 wire [7:0]   S_mot_cnt;
+// [HDR-2026-10-17] 颜色目标检测
+wire [143:0] S_obj_mask;
+wire [7:0]   S_obj_cnt;
 wire         S_mot_any;
 
 isp_top u_isp_top (
@@ -981,6 +984,7 @@ isp_top u_isp_top (
 .I_gamma_bypass  (S_gamma_bypass),
         .I_lsc_bypass (S_lsc_bypass ),
         .I_mot_en       (S_mot_en        ),
+        .I_obj_bypass    ( ~S_mot_en            ),  // [HDR-2026-10-17] SW3 关则目标检测也清空
         .I_mot_diff_th  (S_mot_diff      ),
         .I_mot_floor_th (S_mot_floor     ),
         .I_mot_strict2  (S_mot_st2       ),
@@ -997,6 +1001,8 @@ isp_top u_isp_top (
 // [HDR-2026-10-15b] 运动检测结果：透传给 hdmi_mixer 的 OSD 层
     .O_mot_mask      (S_mot_mask    ),
     .O_mot_cnt       (S_mot_cnt     ),
+        .O_obj_mask      (S_obj_mask    ),
+        .O_obj_cnt       (S_obj_cnt     ),
     .O_mot_any       (S_mot_any     )
   );
 
@@ -1184,6 +1190,8 @@ isp_top u_isp_top (
         //   文本已改为 S-CURVE / LSC / MOT:1|0 / SENS H|L（SW3/SW4 改用途后的真实含义）。
         .I_par_sw        ( S_gain_applied     ),
               .I_mot_cnt       ( S_mot_cnt            ),
+        .I_obj_mask      ( S_obj_mask           ),
+        .I_obj_cnt       ( S_obj_cnt            ),
       .I_mot_en        ( S_mot_en             ),
         .O_video_rd_en   ( S_hdmi_window_rd_en),
         .I_video_rd_data ( S_video_rd_data    ),
