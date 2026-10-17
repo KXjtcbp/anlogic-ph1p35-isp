@@ -276,8 +276,8 @@ ae_stat u_ae_stat (
         .V_LINES       (12'd720 ),
         .BEATS_PER_BLK (5'd20   ),
         .LINES_PER_BLK (7'd80   ),
-        .LUM_MIN       (8'd56   ),
-        .CHR_MIN       (8'd24   ),
+        .LUM_MIN       (8'd64   ),
+        .CHR_MIN       (8'd40   ),
         .HIT_MIN       (13'd40  )
     ) u_obj_detect (
         .I_clk      (axi4s_video_aclk ),
