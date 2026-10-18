@@ -127,7 +127,7 @@ module tb_obj_detect;
         chk("any   1",  obj_any,  1);
 
         // 第二帧：全黑 ⇒ 掩码应全 0
-        for (b = 0; b < 11; b = b + 1) begin   // [A2] 前 2 帧清 S_prev，再 9 帧让 8 帧保持过期后再判 0
+        for (b = 0; b < 63; b = b + 1) begin   // [A2] 2 帧清 S_prev + 61 帧让 60 帧保持过期   // [A2] 前 2 帧清 S_prev，再 9 帧让 8 帧保持过期后再判 0
             for (i = 0; i < 720; i = i + 1) begin
                 for (x = 0; x < 320; x = x + 1) begin
                     tvalid = 1'b1;

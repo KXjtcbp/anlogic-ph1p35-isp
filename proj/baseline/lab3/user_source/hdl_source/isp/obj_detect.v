@@ -208,9 +208,9 @@ module obj_detect #(
     // ★ [HDR-2026-10-18-A2] 目标跟踪：漏检保持 ★
     //   目标被短暂遮挡/漏检时，把最近一次非空掩码保持 A2_HOLD 帧再消退，
     //   屏幕上表现为「框不闪、不瞬断」——这是「目标跟踪」相对「逐帧检测」的实质差别。
-    localparam [3:0] A2_HOLD = 4'd8;
+    localparam [5:0] A2_HOLD = 6'd60;
     reg [143:0] S_hold;     // 最近一次非空（已滤除）掩码
-    reg  [3:0]  S_holdc;    // 剩余保持帧数
+    reg  [5:0]  S_holdc;    // 剩余保持帧数
     wire [143:0] S_clean = F_iso(S_now & S_prev);
     reg [143:0] S_now;      // [fix8] 本帧原始判决
     reg [143:0] S_prev;     // [fix8] 上一帧原始判决
@@ -239,7 +239,7 @@ module obj_detect #(
             S_now      <= 144'd0;
             S_prev     <= 144'd0;
             S_hold     <= 144'd0;
-            S_holdc    <= 4'd0;
+            S_holdc    <= 6'd0;
         end else begin
             // 累加（块列边界那拍清零，同时该块的判定结果写入下面）
             S_acc0  <= S_frame_start ? 13'd0 : S_acc0_nx;
@@ -287,7 +287,7 @@ module obj_detect #(
                 S_now      <= 144'd0;
                 S_prev     <= 144'd0;
                 S_hold     <= 144'd0;
-                S_holdc    <= 4'd0;
+                S_holdc    <= 6'd0;
                 O_blk_cnt  <= 8'd0;
                 O_obj_any  <= 1'b0;
                 O_hit_sum  <= 16'd0;
@@ -318,11 +318,11 @@ module obj_detect #(
                 if (S_clean != 144'd0) begin
                     S_hold  <= S_clean;
                     S_holdc <= A2_HOLD;
-                end else if (S_holdc != 4'd0) begin
-                    S_holdc <= S_holdc - 4'd1;
+                end else if (S_holdc != 6'd0) begin
+                    S_holdc <= S_holdc - 6'd1;
                 end
                 O_blk_mask <= (S_clean != 144'd0) ? S_clean :
-                              ((S_holdc != 4'd0) ? S_hold : 144'd0);
+                              ((S_holdc != 6'd0) ? S_hold : 144'd0);
                 S_prev     <= S_now;
                 S_now      <= 144'd0;
             end
