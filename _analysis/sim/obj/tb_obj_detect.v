@@ -7,6 +7,15 @@
 // ============================================================================
 module tb_obj_detect;
 
+    function integer popcount(input [143:0] v);
+        integer k;
+        begin
+            popcount = 0;
+            for (k = 0; k < 144; k = k + 1) if (v[k]) popcount = popcount + 1;
+        end
+    endfunction
+
+
     localparam OSD_X0 = 0;      // 不做 OSD 剔除，整帧参与
 
     reg         clk = 1'b0;
@@ -140,6 +149,9 @@ module tb_obj_detect;
                 repeat (2) @(posedge clk); #1;
             end
             repeat (5) @(posedge clk);
+            // [A2-PERSIST] 打印暗段每帧的掩码位数，验证 60 帧保持
+            if (b < 3 || b == 30 || b == 58 || b == 59 || b == 60 || b == 61 || b == 62)
+                $display("   [persist] dark frame b=%0d  mask_popcount=%0d", b, popcount(blk_mask));
         end
         repeat (5) @(posedge clk); #1;
         one_cnt = 0;
