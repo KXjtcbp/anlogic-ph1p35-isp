@@ -182,6 +182,29 @@ module obj_detect #(
     // 块结束那拍无条件锁存（不再 & S_add）
     wire S_blk_hit = S_blk_end;
 
+    // ★ [HDR-2026-10-18-iso] 孤立块滤除（erosion-by-neighbour）★
+    //   空场景实测存在「单个孤立块」误检（13:11:45 那张，block row0/col7）。
+    //   真实目标必然跨多个块（红笔竖放跨 5+ 块行），孤立单块一定是颜色噪声。
+    //   规则：保留「自身命中且 4 邻域至少还有一个命中」的块；单块凸起顺便被削掉。
+    function [143:0] F_iso;
+        input [143:0] m;
+        integer by, bx;
+        reg hit;
+        begin
+            F_iso = 144'd0;
+            for (by = 0; by < 9; by = by + 1) begin
+                for (bx = 0; bx < 16; bx = bx + 1) begin
+                    hit = m[by*16 + bx]
+                       && ( (bx > 0  && m[by*16 + bx - 1    ])
+                         || (bx < 15 && m[by*16 + bx + 1    ])
+                         || (by > 0  && m[(by-1)*16 + bx    ])
+                         || (by < 8  && m[(by+1)*16 + bx    ]) );
+                    F_iso[by*16 + bx] = hit;
+                end
+            end
+        end
+    endfunction
+
     reg [143:0] S_now;      // [fix8] 本帧原始判决
     reg [143:0] S_prev;     // [fix8] 上一帧原始判决
 
@@ -280,7 +303,7 @@ module obj_detect #(
             //   但计数会退化；obj_any 是 OSD/上层的唯一用途，直接用掩码最可靠。
             // ★ [fix8] 帧末合成：本帧 & 上一帧 ⇒ 单帧噪声被滤掉 ★
             if (S_line_end && (S_y == (V_LINES - 12'd1))) begin
-                O_blk_mask <= S_now & S_prev;
+                O_blk_mask <= F_iso(S_now & S_prev);   // ★ [iso] 孤立块滤除 ★
                 S_prev     <= S_now;
                 S_now      <= 144'd0;
             end
