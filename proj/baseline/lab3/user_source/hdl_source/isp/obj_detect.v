@@ -315,11 +315,19 @@ module obj_detect #(
             // ★ [fix8] 帧末合成：本帧 & 上一帧 ⇒ 单帧噪声被滤掉 ★
             if (S_line_end && (S_y == (V_LINES - 12'd1))) begin
                 // ★ [A2] 本帧有目标 ⇒ 刷新保持；无目标 ⇒ 递减保持计数 ★
+                // ★ [A2-fix9] 刷新条件从 S_clean 放宽到「本帧有任何原始命中」★
+                //   原逻辑只在 S_clean(两帧 AND + 孤立块滤除) 非空时刷新窗口。
+                //   目标在画面边缘/被手部分遮挡时 S_now 有零星命中但 S_clean 过不了
+                //   两帧确认 ⇒ 窗口被白白消耗，等真正完全遮挡到来时计数器已经很低，
+                //   框提前消失（板上实测：遮挡 0.68 s 就没了，而窗口名义上是 1.0 s）。
+                //   改成 S_now 非空即刷新：目标还在就不消耗窗口，只在不命中时倒数。
                 if (S_clean != 144'd0) begin
-                    S_hold  <= S_clean;
+                    S_hold  <= S_clean;      // 有可靠目标 ⇒ 同时刷新保持的掩码
                     S_holdc <= A2_HOLD;
+                end else if (S_now != 144'd0) begin
+                    S_holdc <= A2_HOLD;      // 有原始命中但不满足两帧确认 ⇒ 只刷新窗口，不换掩码
                 end else if (S_holdc != 6'd0) begin
-                    S_holdc <= S_holdc - 6'd1;
+                    S_holdc <= S_holdc - 6'd1;   // 本帧完全没有命中 ⇒ 消耗窗口
                 end
                 O_blk_mask <= (S_clean != 144'd0) ? S_clean :
                               ((S_holdc != 6'd0) ? S_hold : 144'd0);
@@ -328,7 +336,7 @@ module obj_detect #(
             end
             // obj_any 在帧末由新掩码决定（见上面的帧末块）
             if (S_line_end && (S_y == (V_LINES - 12'd1)))
-                O_obj_any <= ((S_now & S_prev) != 144'd0);
+                O_obj_any <= ((S_clean != 144'd0) || (S_holdc != 6'd0));   // [A2-fix9] 与 O_blk_mask 口径一致（含保持）
         end
     end
 
