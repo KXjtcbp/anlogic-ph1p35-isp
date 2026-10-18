@@ -205,6 +205,13 @@ module obj_detect #(
         end
     endfunction
 
+    // ★ [HDR-2026-10-18-A2] 目标跟踪：漏检保持 ★
+    //   目标被短暂遮挡/漏检时，把最近一次非空掩码保持 A2_HOLD 帧再消退，
+    //   屏幕上表现为「框不闪、不瞬断」——这是「目标跟踪」相对「逐帧检测」的实质差别。
+    localparam [3:0] A2_HOLD = 4'd8;
+    reg [143:0] S_hold;     // 最近一次非空（已滤除）掩码
+    reg  [3:0]  S_holdc;    // 剩余保持帧数
+    wire [143:0] S_clean = F_iso(S_now & S_prev);
     reg [143:0] S_now;      // [fix8] 本帧原始判决
     reg [143:0] S_prev;     // [fix8] 上一帧原始判决
 
@@ -231,6 +238,8 @@ module obj_detect #(
             O_hit_sum  <= 16'd0;
             S_now      <= 144'd0;
             S_prev     <= 144'd0;
+            S_hold     <= 144'd0;
+            S_holdc    <= 4'd0;
         end else begin
             // 累加（块列边界那拍清零，同时该块的判定结果写入下面）
             S_acc0  <= S_frame_start ? 13'd0 : S_acc0_nx;
@@ -277,6 +286,8 @@ module obj_detect #(
                 O_blk_mask <= 144'd0;
                 S_now      <= 144'd0;
                 S_prev     <= 144'd0;
+                S_hold     <= 144'd0;
+                S_holdc    <= 4'd0;
                 O_blk_cnt  <= 8'd0;
                 O_obj_any  <= 1'b0;
                 O_hit_sum  <= 16'd0;
@@ -303,7 +314,15 @@ module obj_detect #(
             //   但计数会退化；obj_any 是 OSD/上层的唯一用途，直接用掩码最可靠。
             // ★ [fix8] 帧末合成：本帧 & 上一帧 ⇒ 单帧噪声被滤掉 ★
             if (S_line_end && (S_y == (V_LINES - 12'd1))) begin
-                O_blk_mask <= F_iso(S_now & S_prev);   // ★ [iso] 孤立块滤除 ★
+                // ★ [A2] 本帧有目标 ⇒ 刷新保持；无目标 ⇒ 递减保持计数 ★
+                if (S_clean != 144'd0) begin
+                    S_hold  <= S_clean;
+                    S_holdc <= A2_HOLD;
+                end else if (S_holdc != 4'd0) begin
+                    S_holdc <= S_holdc - 4'd1;
+                end
+                O_blk_mask <= (S_clean != 144'd0) ? S_clean :
+                              ((S_holdc != 4'd0) ? S_hold : 144'd0);
                 S_prev     <= S_now;
                 S_now      <= 144'd0;
             end
