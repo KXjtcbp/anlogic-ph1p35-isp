@@ -2,8 +2,8 @@
 """
 把当前项目进展填进比赛报告样板。
 保留样板原有章节结构、段落样式与字体（Times New Roman + 宋体 12pt，行距 1.5）。
-脚本来源：E:\FPGA\2658aa94-81d0-454c-b2ac-fc040ff2c01a.docx
-输出：   E:\FPGA\报告_填空版_20261016.docx
+脚本来源：E:\FPGA\比赛报告_官方样板.docx
+输出：   E:\FPGA\比赛报告_填空版_20261018.docx
 """
 import copy
 import sys
@@ -15,8 +15,8 @@ from docx.text.paragraph import Paragraph
 
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
-SRC = r"E:\FPGA\2658aa94-81d0-454c-b2ac-fc040ff2c01a.docx"
-DST = r"E:\FPGA\报告_填空版_20261016.docx"
+SRC = r"E:\FPGA\比赛报告_官方样板.docx"
+DST = r"E:\FPGA\比赛报告_填空版_20261018.docx"
 
 
 def set_para(p, text):
