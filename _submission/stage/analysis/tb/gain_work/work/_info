@@ -1,0 +1,132 @@
+m255
+K4
+z2
+13
+!s112 1.1
+!i10d 8192
+!i10e 25
+!i10f 100
+cModel Technology
+Z0 dE:/FPGA/_analysis/tb/gain_work
+vSC500GainTbl
+Z1 !s110 1791641168
+!i10b 1
+!s100 B>oAo?Cj;CPgnf:jSNYG]1
+ICdVz9FX2=HAihB4Jm<mlR2
+Z2 V`JN@9S9cnhjKRR_L]QIcM3
+R0
+Z3 w1791537368
+8E:\FPGA\proj\baseline\lab3\user_source\hdl_source\uics500_cfg\SC500GainTbl.v
+FE:\FPGA\proj\baseline\lab3\user_source\hdl_source\uics500_cfg\SC500GainTbl.v
+L0 22
+Z4 OV;L;10.3c;59
+r1
+!s85 0
+31
+Z5 !s108 1791641168.128000
+Z6 !s107 E:\FPGA\_analysis\tb\tb_gain_tbl.v|E:\FPGA\proj\baseline\lab3\user_source\hdl_source\uics500_cfg\uicfgcs500_720p.v|E:\FPGA\proj\baseline\lab3\user_source\hdl_source\uics500_cfg\uics500regAE.v|E:\FPGA\proj\baseline\lab3\user_source\hdl_source\uics500_cfg\uics500reg_720p60.v|E:\FPGA\proj\baseline\lab3\user_source\hdl_source\uics500_cfg\SC500GainTbl.v|E:\FPGA\proj\baseline\lab3\user_source\hdl_source\uics500_cfg\uii2c.v|
+Z7 !s90 -quiet|E:\FPGA\proj\baseline\lab3\user_source\hdl_source\uics500_cfg\uii2c.v|E:\FPGA\proj\baseline\lab3\user_source\hdl_source\uics500_cfg\SC500GainTbl.v|E:\FPGA\proj\baseline\lab3\user_source\hdl_source\uics500_cfg\uics500reg_720p60.v|E:\FPGA\proj\baseline\lab3\user_source\hdl_source\uics500_cfg\uics500regAE.v|E:\FPGA\proj\baseline\lab3\user_source\hdl_source\uics500_cfg\uicfgcs500_720p.v|E:\FPGA\_analysis\tb\tb_gain_tbl.v|
+!i113 1
+Z8 o-quiet
+n@s@c500@gain@tbl
+vtb_gain_tbl
+!s110 1791641182
+!i10b 1
+!s100 aDjgaLjHzjKofZ49G6BMi2
+IITFXRb_4Qg[k;jgFkF_cd1
+R2
+R0
+w1791641179
+8E:\FPGA\_analysis\tb\tb_gain_tbl.v
+FE:\FPGA\_analysis\tb\tb_gain_tbl.v
+L0 17
+R4
+r1
+!s85 0
+31
+!s108 1791641182.022000
+!s107 E:\FPGA\_analysis\tb\tb_gain_tbl.v|
+!s90 -quiet|E:\FPGA\_analysis\tb\tb_gain_tbl.v|
+!i113 1
+R8
+vuicfgcs500_720p
+R1
+!i10b 1
+!s100 `1VEIhU;TfHnGfKBEN]<F1
+IL8?jB^L:cFZlIfOBJ=ZO13
+R2
+R0
+w1791641085
+8E:\FPGA\proj\baseline\lab3\user_source\hdl_source\uics500_cfg\uicfgcs500_720p.v
+FE:\FPGA\proj\baseline\lab3\user_source\hdl_source\uics500_cfg\uicfgcs500_720p.v
+L0 19
+R4
+r1
+!s85 0
+31
+R5
+R6
+R7
+!i113 1
+R8
+vuics500reg_720p60
+R1
+!i10b 1
+!s100 ^S^CSIK`WM3=MmX:YdFNc2
+IZV2XL7:H1EIJfU?^YaAOL0
+R2
+R0
+w1791641080
+8E:\FPGA\proj\baseline\lab3\user_source\hdl_source\uics500_cfg\uics500reg_720p60.v
+FE:\FPGA\proj\baseline\lab3\user_source\hdl_source\uics500_cfg\uics500reg_720p60.v
+L0 47
+R4
+r1
+!s85 0
+31
+R5
+R6
+R7
+!i113 1
+R8
+vuics500regAE
+R1
+!i10b 1
+!s100 ijUQIjGP9e;]G`RJ^[>dg3
+I^bFD^>L=WW2e=Ab]ib?h30
+R2
+R0
+R3
+8E:\FPGA\proj\baseline\lab3\user_source\hdl_source\uics500_cfg\uics500regAE.v
+FE:\FPGA\proj\baseline\lab3\user_source\hdl_source\uics500_cfg\uics500regAE.v
+L0 49
+R4
+r1
+!s85 0
+31
+R5
+R6
+R7
+!i113 1
+R8
+nuics500reg@a@e
+vuii2c
+R1
+!i10b 1
+!s100 XeQmA[?eho2D>ekbVo=]J3
+IomKi`lZ9om`fC1nQ]am@R1
+R2
+R0
+w1791537597
+8E:\FPGA\proj\baseline\lab3\user_source\hdl_source\uics500_cfg\uii2c.v
+FE:\FPGA\proj\baseline\lab3\user_source\hdl_source\uics500_cfg\uii2c.v
+L0 57
+R4
+r1
+!s85 0
+31
+R5
+R6
+R7
+!i113 1
+R8

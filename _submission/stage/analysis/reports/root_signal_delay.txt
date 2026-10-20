@@ -1,0 +1,157 @@
+   1| //=============================================================================
+   2| // 文件      : signal_delay.v
+   3| // 模块      : signal_delay #( IMG_HEIGHT=1080, IMG_WIDTH=1920, DATA_WIDTH=96, DELAY_CYCLE=50 )
+   4| // 功能      : 整行信号延时：用一块双口 BRAM 把像素流（含 valid/tuser）延后 DELAY_CYCLE 行，好让 awb 的除法器算完增益后再对齐施加到同一像素上。★与 isp\awb\signal_delay.v 同名但内容不同。核实结论：本文件在 .al 编译清单中，被 awb.v:186 与 awb.v:225 各例化一次，是本工程当前在用的实现（isp/awb/ 下的同名文件不在 .al 中）。
+   5| // 数据通路  : 输入 I_clk/I_rst_n/I_tuser/I_valid/I_data[DATA_WIDTH-1:0]，输出 O_valid/O_data/O_tuser。localparam IMG_WIDTH_4x = (IMG_WIDTH >> 2)（1280 -> 320，因为每拍 4 个像素）；h_cnt 在 I_valid_r 时按 IMG_WIDTH_4x 环回、v_cnt 在行尾时按 IMG_HEIGHT 环回，组成写地址基准；rd_valid 在 h_cnt == DELAY_CYCLE - 3（= 47）时拉高，rd_cnt 计到 IMG_WIDTH_4x-1 清 0，作为读地址基准；addra（写指针）与 addrb（读指针）都在 IMG_WIDTH_4x 内环回（11bit，深度覆盖一行）；O_valid = rd_valid_d（打一拍），O_tuser = (v_cnt==0)&&(rd_cnt==1)（读侧第 0 行第 1 拍重新产生行首标志）。写侧 I_valid_r 打拍后驱动 BRAM 的 wea，数据 I_data_r 驱动 dia；读侧 dob 直接接到 O_data。
+   6| // 时钟/复位 : I_clk 同时作 BRAM 的 clka 与 clkb（同步双口），I_rst_n 异步复位、低电平有效；延时量由 DELAY_CYCLE 参数（例化时为 50 行）决定。
+   7| // 依赖      : 例化 blk_mem_gen_awb_delay_signal（真双口块 RAM，11bit 地址 x 96bit 数据）。该 BRAM 的源文件在 E:\FPGA\proj\baseline\lab3\user_source\hdl_source\isp\awb\ram\blk_mem_gen_awb_delay_signal.v，而该路径不在 camera_to_dsi_display.al 中，本工程应是在 .al 里以 IP 形式提供该 BRAM（未能从 .al 逐字确认，属未确认点）。
+   8| // 综合/实现 : 本文件在 camera_to_dsi_display.al 的编译清单中；综合结果是一块 320 x 96bit 的双口 BRAM（约 30Kbit）。
+   9| //-----------------------------------------------------------------------------
+  10| // 修改记录  :
+  11| //   <日期不详>  自官方 lab3 基线导入后本工程未见针对本文件的修改
+  12| //-----------------------------------------------------------------------------
+  13| // 2026-10-09 全树做过一次标识符改名（只改名字不改逻辑），对照见 E:\FPGA\_analysis\rename_report.txt
+  14| //=============================================================================
+  15| //---- kuai 1: duan-kou sheng-ming (xiang-su liu + tuser de zheng-hang yan-shi) ----
+  16| /*****************************************************************
+  17| Company : MiLianKe Electronic Technology Co., Ltd.
+  18| WebSite:https://www.milianke.com
+  19| TechWeb:https://www.uisrc.com
+  20| tmall-shop:https://milianke.tmall.com
+  21| jd-shop:https://milianke.jd.com
+  22| taobao-shop: https://milianke.taobao.com
+  23| Description: 
+  24| The reference demo provided by Milianke is only used for learning. 
+  25| We cannot ensure that the demo itself is free of bugs, so users 
+  26| should be responsible for the technical problems and consequences
+  27| caused by the use of their own products.
+  28| @Author      :   XiaoQingquan 
+  29| @Time        :   2025/01 
+  30| version:     :   
+  31| @Description :   
+  32| *****************************************************************/
+  33| module signal_delay #(
+  34|     parameter IMG_HEIGHT = 1080,
+  35|     parameter IMG_WIDTH  = 1920,
+  36|     parameter DATA_WIDTH = 96,
+  37|     parameter DELAY_CYCLE = 50
+  38| ) (
+  39|     input                        I_clk,
+  40|     input                        I_rst_n,
+  41|     input                        I_tuser,  //synthesis keep 
+  42|     input  wire                  I_valid,  //synthesis keep 
+  43|     input  wire [DATA_WIDTH-1:0] I_data,   //synthesis keep 
+  44|     output wire                  O_valid,  //synthesis keep 
+  45|     output wire [DATA_WIDTH-1:0] O_data ,  //synthesis keep 
+  46|     output wire                  O_tuser   //synthesis keep 
+  47| );
+  48| 
+  49|     //---- kuai 2: xie/du di-zhi yu qi-dong xin-hao (rd_valid / rd_cnt / addra / addrb) ----
+  50|     wire        rd_en;  //synthesis keep 
+  51| 
+  52|     reg  [10:0] addra;  //synthesis keep 
+  53|     reg  [10:0] addrb;  //synthesis keep 
+  54| 
+  55| 
+  56|     reg  [13:0] h_cnt;
+  57|     reg  [13:0] v_cnt;
+  58|     reg  [13:0] rd_cnt;
+  59|     
+  60|     reg  [DATA_WIDTH-1:0] I_data_r;
+  61|     reg         rd_valid,I_valid_r;
+  62| 
+  63|     //---- kuai 3: hang-lie ji-shu (IMG_WIDTH_4x = IMG_WIDTH >> 2, yin wei mei pai 4 xiang-su) ----
+  64|     localparam IMG_WIDTH_4x = (IMG_WIDTH >> 2);
+  65|     //---- kuai 4: xie-ce shi-neng da-pai I_valid_r ----
+  66|     always @(posedge I_clk or negedge I_rst_n) begin
+  67|         if (!I_rst_n ) begin
+  68|             I_valid_r <= 0;
+  69|             I_data_r  <= 0;
+  70|         end
+  71|         else begin
+  72|             I_valid_r <= I_valid;
+  73|             I_data_r  <= I_data;
+  74|         end
+  75|     end
+  76| 
+  77|     //---- kuai 5: hang/lie ji-shu (h_cnt an IMG_WIDTH_4x huan-hui, v_cnt an IMG_HEIGHT huan-hui) ----
+  78|     always @(posedge I_clk or negedge I_rst_n) begin
+  79|         if (!I_rst_n || I_tuser) begin
+  80|             h_cnt <= 0;
+  81|             v_cnt <= 0;
+  82|         end
+  83|         else begin
+  84|             h_cnt <= I_valid_r ? ((h_cnt == IMG_WIDTH_4x-1) ? 0 : h_cnt + 1) : h_cnt;
+  85|             v_cnt <= I_valid_r &&(h_cnt == IMG_WIDTH_4x-1) ? ((v_cnt == IMG_HEIGHT - 1) ? 0 : v_cnt + 1) : v_cnt;
+  86|         end
+  87|     end
+  88|     
+  89|     //---- kuai 6: du qi-dong (h_cnt == DELAY_CYCLE - 3 shi la-di, ji yan shi DELAY_CYCLE hang) ----
+  90|     always @(posedge I_clk or negedge I_rst_n) begin
+  91|         if (!I_rst_n || I_tuser) begin
+  92|             rd_valid <= 0;
+  93|         end
+  94|         else if(h_cnt == DELAY_CYCLE - 3)begin
+  95|             rd_valid <= 1;
+  96|         end
+  97|         else if(rd_cnt == IMG_WIDTH_4x - 1) 
+  98|             rd_valid <= 0;
+  99|     end
+ 100| 
+ 101|     //---- kuai 7: du-ce hang-shou ji-shu rd_cnt (ji dao yi-hang jie-shu qing 0) ----
+ 102|     always @(posedge I_clk or negedge I_rst_n) begin
+ 103|         if (!I_rst_n || I_tuser) begin
+ 104|             rd_cnt <= 0;
+ 105|         end
+ 106|         else if(rd_cnt == IMG_WIDTH_4x )
+ 107|             rd_cnt <= 0;
+ 108|         else if(rd_valid)begin
+ 109|             rd_cnt <= rd_cnt + 1;
+ 110|         end
+ 111|     end
+ 112| 
+ 113|     //---- kuai 8: BRAM xie di-zhi addra (zai yi-hang nei huan-hui) ----
+ 114|     always @(posedge I_clk or negedge I_rst_n) begin
+ 115|         if (!I_rst_n || I_tuser) begin
+ 116|             addra <= 0;
+ 117|         end else if (I_valid_r) begin
+ 118|             addra <= (addra == IMG_WIDTH_4x - 1) ? 'b0 : addra + 1'b1;
+ 119|         end
+ 120|     end
+ 121| 
+ 122|   
+ 123|     //---- kuai 9: BRAM du di-zhi addrb (sui rd_valid zai yi-hang nei huan-hui) ----
+ 124|     always @(posedge I_clk or negedge I_rst_n) begin
+ 125|       if (!I_rst_n || I_tuser) begin
+ 126|         addrb <= 0;
+ 127|       end else begin
+ 128|         addrb <= rd_valid ? (addrb == IMG_WIDTH_4x - 1) ? 'b0 : addrb + 1'b1 : addrb;
+ 129|       end
+ 130|     end
+ 131|     
+ 132|     //---- kuai 10: shu-chu you-xiao da-pai (O_valid = rd_valid_d) ----
+ 133|     reg rd_valid_d;
+ 134|     always @(posedge I_clk or negedge I_rst_n) begin
+ 135|       if (!I_rst_n) begin
+ 136|         rd_valid_d <= 0;
+ 137|       end else begin
+ 138|         rd_valid_d <= rd_valid;
+ 139|       end
+ 140|     end
+ 141|     //---- kuai 11: shu-chu shou-wo (O_valid / O_tuser: di 0 hang di 1 pai chong-xin chan-sheng hang-shou) ----
+ 142|     assign O_valid = rd_valid_d;
+ 143|     assign O_tuser = (v_cnt == 0) && (rd_cnt == 1);
+ 144| 
+ 145|     //---- kuai 12: shuang-kou BRAM shi-li-hua (yuan-wen-jian isp/awb/ram/blk_mem_gen_awb_delay_signal.v, bu zai .al qing-dan zhong) ----
+ 146|     blk_mem_gen_awb_delay_signal blk_mem_gen_awb_delay_signal_d (
+ 147|       .clka (I_clk   ),  // input wire clka
+ 148|       .wea  (I_valid_r),  // input wire [0 : 0] wea
+ 149|       .addra(addra   ),  // input wire [10 : 0] addra
+ 150|       .dia  (I_data_r ),  // input wire [95 : 0] dina
+ 151|       .clkb (I_clk   ),  // input wire clkb
+ 152|       .addrb(addrb   ),  // input wire [10 : 0] addrb
+ 153|       .dob  (O_data  )   // output wire [95 : 0] doutb
+ 154|     );
+ 155| 
+ 156| 
+ 157| endmodule

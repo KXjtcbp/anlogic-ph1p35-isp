@@ -1,0 +1,143 @@
+==== isp_top.v : +59 / -8 lines ; 210 -> 261 lines
+--- bak_20261010
++++ now
+@@ -36,3 +36,9 @@
+     //   出现「状态行显示 MODE 4，但画面没变化」的静默故障。
+-    input [2:0]     I_algo_mode
++    input [2:0]     I_algo_mode     ,
++    // [HDR-2026-10-10] 板上乒乓开关 SW1/SW2（顶层已同步到本时钟域）
++    //   I_blk_bypass  : SW1，1 = 黑电平扣除【直通】（= 2026-10-09 之前的老行为），0 = 启用扣除
++    //   I_gamma_bypass: SW2，1 = S 曲线【直通】，0 = 启用 S 曲线
++    //   复位期间顶层把这两根都拉成 1 ⇒ 上电老行为，绝不会「一上电就变样」。
++    input           I_blk_bypass    ,
++    input           I_gamma_bypass
+ );
+@@ -68,3 +74,18 @@
+ 
+-  assign awb_O_tready = O_tready;
++  //--------------------------------------------------------------------------
++  // [HDR-2026-10-10] S 曲线查表级（isp_gamma）的中间信号
++  //   位置：awb 之后、my_algo 之前；固定 2 拍延迟（ROM 同步读 1 拍 + 输出 1 拍）
++  //--------------------------------------------------------------------------
++  wire         gam_I_tready;   //synthesis keep 
++  wire         gam_O_tlast;    //synthesis keep 
++  wire         gam_O_tuser;    //synthesis keep 
++  wire [ 95:0] gam_O_tdata;    //synthesis keep 
++  wire         gam_O_tvalid;   //synthesis keep 
++  wire         algo_I_tready;  //synthesis keep 
++
++  // [HDR-2026-10-10] 原来这里直接把 awb 的 O_tready 接到顶层 O_tready。
++  //   插入 isp_gamma 之后 awb 的下游变成 gamma，回压信号改由 gamma 给出；
++  //   gamma 内部就是 `assign I_tready = O_tready;`（与 awb.v:513、my_algo.v:96
++  //   同一条写法），所以 awb_O_tready 的波形与改动前逐拍相同，全链路仍无真反压。
++  assign awb_O_tready = gam_I_tready;
+   //--------------------------------------------------------------------------
+@@ -104,3 +125,8 @@
+   assign O_tdata  = awb_O_tdata_128 ;
+-  assign O_tlast  = awb_O_tlast     ;
++  // [HDR-2026-10-10] ★这一行的取值从 awb 那级改成 gamma 那级★
++  //   原厂写法的语义是「O_tlast = my_algo 输入那一拍的 tlast」；
++  //   插入 isp_gamma（2 拍）后，my_algo 的输入 beat 就是 gamma 的输出 beat，
++  //   所以必须改成 gam_O_tlast ⇒ 与加 gamma 之前逐拍等价（= awb_O_tlast 延 2 拍）。
++  //   若仍取 awb_O_tlast，O_tlast 会比数据早 2 拍 ⇒ 行尾标记错位。
++  assign O_tlast  = gam_O_tlast     ;
+   assign O_tuser  = awb_O_tuser_128 ;
+@@ -125,2 +151,3 @@
+     .I_rst_n 			(I_rst_n)	,   // 复位信号，低有效
++    .I_blk_bypass 		(I_blk_bypass)	,  // [HDR-2026-10-10] 黑电平扣除旁路（1=直通）
+     .axi4s_video_tdata 	(I_tdata)	,  // AXI4-Stream视频数据
+@@ -162,2 +189,25 @@
+     //==========================================================================
++    // [HDR-2026-10-10] S 曲线（色调曲线）查表级 —— 插在 awb 与 my_algo 之间
++    //   12 个 8bit 分量共用同一张 256×8 表（R/G/B 同表 ⇒ 不动白平衡）；
++    //   表内容 = gamma_lut_p118_k125.hex（P=118, A=B=1.25 中等档 S 曲线）。
++    //   固定 2 拍延迟，无空拍；bypass 也是 2 拍（不会错帧）。
++    //   ★该级绝不能停拍（全链路无真反压，见 isp_gamma.v 头部说明）。
++    //==========================================================================
++    isp_gamma u_isp_gamma (
++        .I_clk          ( axi4s_video_aclk ),
++        .I_rst_n        ( I_rst_n          ),
++        .I_tlast        ( awb_O_tlast      ),
++        .I_tuser        ( awb_O_tuser      ),
++        .I_tdata        ( awb_O_tdata      ),
++        .I_tvalid       ( awb_O_tvalid     ),
++        .I_tready       ( gam_I_tready     ),
++        .I_gamma_bypass ( I_gamma_bypass   ),
++        .O_tdata        ( gam_O_tdata      ),
++        .O_tlast        ( gam_O_tlast      ),
++        .O_tuser        ( gam_O_tuser      ),
++        .O_tvalid       ( gam_O_tvalid     ),
++        .O_tready       ( algo_I_tready    )
++    );
++
++    //==========================================================================
+     // [OUR ALGO] 自研图像增强算法 —— RGB 点运算算法集
+@@ -175,7 +225,8 @@
+         .I_rst_n    ( I_rst_n          ),
+-        .I_tlast    ( awb_O_tlast      ),
+-        .I_tuser    ( awb_O_tuser      ),
+-        .I_tdata    ( awb_O_tdata      ),
+-        .I_tvalid   ( awb_O_tvalid     ),
+-        .I_tready   ( awb_O_tready     ),
++        // [HDR-2026-10-10] 输入源由 awb 改为 isp_gamma 的输出（多 2 拍延迟）
++        .I_tlast    ( gam_O_tlast      ),
++        .I_tuser    ( gam_O_tuser      ),
++        .I_tdata    ( gam_O_tdata      ),
++        .I_tvalid   ( gam_O_tvalid     ),
++        .I_tready   ( algo_I_tready    ),
+         .O_tdata    ( algo_O_tdata     ),
+
+==== design_top_wrapper.v : +40 / -1 lines ; 869 -> 908 lines
+--- bak_20261010
++++ now
+@@ -34,2 +34,11 @@
+     inout wire [3:0]  I_button,
++
++    // [HDR-2026-10-10] 板上乒乓开关 SW1-SW4
++    //   手册《新HX1P35A开发板手册-HDL版2604》P396-404：
++    //     「SW1-SW4 是作为与 FPGA 的 IO 输入信号，拨上为"1"，拨下为"0"」
++    //     引脚 SW1=A4 / SW2=B4 / SW3=E11 / SW4=D11
++    //   SW1(A4) = 黑电平扣除旁路：1 = 直通（老行为），0 = 启用扣除
++    //   SW2(B4) = S 曲线旁路    ：1 = 直通（老行为），0 = 启用 S 曲线
++    //   SW3/SW4 暂未使用，先接进顶层备后续扩展（pin.adc 已声明，内部上拉）
++    input wire [3:0]  I_switch,
+ 
+@@ -633,2 +642,29 @@
+ 
++//=============================================================================
++// [HDR-2026-10-10] 乒乓开关 SW1/SW2 → ISP 旁路控制（跨时钟域同步）
++//   拨上=1=【旁路】= 加黑电平扣除 / S 曲线之前的老行为；拨下=0=启用新功能。
++//   pin.adc 里对这 4 根都声明了 PULLUP ⇒ 开关未焊/悬空时读到 1 ⇒ 自动老行为。
++//   机械开关抖动极慢（毫秒级），这里只做 2 级同步消除亚稳态，不做去抖。
++//   复位期间输出 1（旁路）⇒ 上电瞬间画面就是老行为，不会闪。
++//=============================================================================
++reg S_sw1_sync0, S_sw1_sync1;
++reg S_sw2_sync0, S_sw2_sync1;
++always @(posedge S_csi_rx_clk or negedge S_rst_n) begin
++    if(!S_rst_n) begin
++        S_sw1_sync0 <= 1'b1;
++        S_sw1_sync1 <= 1'b1;
++        S_sw2_sync0 <= 1'b1;
++        S_sw2_sync1 <= 1'b1;
++    end
++    else begin
++        S_sw1_sync0 <= I_switch[0];
++        S_sw1_sync1 <= S_sw1_sync0;
++        S_sw2_sync0 <= I_switch[1];
++        S_sw2_sync1 <= S_sw2_sync0;
++    end
++end
++
++wire S_blk_bypass   = S_sw1_sync1;   // 1 = 黑电平扣除直通
++wire S_gamma_bypass = S_sw2_sync1;   // 1 = S 曲线直通
++
+ //ISP算法顶层模块
+@@ -649,3 +685,6 @@
+ // [OUR ALGO] 算法模式来自 24 MHz 按键域，my_algo 内部有 2 级同步器
+-.I_algo_mode     (S_algo_mode)
++.I_algo_mode     (S_algo_mode),
++// [HDR-2026-10-10] SW1/SW2 旁路控制（已在 S_csi_rx_clk 域做过 2 级同步）
++.I_blk_bypass    (S_blk_bypass  ),
++.I_gamma_bypass  (S_gamma_bypass)
+   );
+

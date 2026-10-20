@@ -1,0 +1,208 @@
+{
+ "files": [
+  {
+   "path": "video_cuttting.v",
+   "header": [
+    "//=============================================================================",
+    "// 文件      : video_cuttting.v",
+    "// 模块      : video_cutting",
+    "// 功能      : RAW8 图像裁剪（ROI 提取）：在有效期内只放行指定行列窗口内的像素，窗口外输出 valid 拉低、data 清零。",
+    "//             本文件只做行列计数与窗口门控，不含任何图像算法。",
+    "//             注意：文件名拼写为 video_cuttting.v（三个 t），而模块名是 video_cutting（两个 t），不一致属历史遗留。",
+    "// 数据通路  : I_raw8_data[31:0]（一拍一个 RAW8 像素）-> 行/列计数器定位 -> 窗口门控 -> O_raw8_data[31:0]。",
+    "//             O_raw8_frame_start / O_raw8_frame_end 仅打一拍透传，用于保持帧边界与像素流的相对时序。",
+    "// 时钟/复位 : 单一时钟域 I_clk；I_rst_n 低有效异步复位，但只用于 S_line_cnt 的复位。",
+    "//             S_col_cnt / S_line_en / 输出寄存器没有复位，靠帧起始与 valid 下降沿自然归位。",
+    "// 依赖      : 无子模块例化；纯 RTL，无器件原语、无 IP。",
+    "// 综合/实现 : 可综合。未被 td_project/camera_to_dsi_display.al 收录；全树未搜索到 video_cutting 的例化点，",
+    "//             疑似未接入本工程（未能确认是否被例化）。",
+    "//-----------------------------------------------------------------------------",
+    "//   <日期不详>  自官方 lab3 基线导入后本工程未见针对本文件的修改",
+    "//-----------------------------------------------------------------------------",
+    "// 2026-10-09 全树做过一次标识符改名（只改名字不改逻辑），对照见 E:\\FPGA\\_analysis\\rename_report.txt",
+    "//============================================================================="
+   ],
+   "inserts": [
+    {
+     "anchor": "module video_cutting (",
+     "lines": [
+      "",
+      "//---- 模块说明 ----",
+      "// 本模块把 RAW8 数据流裁剪成一个矩形 ROI：",
+      "//   行方向：S_line_cnt 落在 126..727 之间的行才允许输出（裁剪后有效高度 727-126+1 = 602 行）；",
+      "//   列方向：行内第 100..357 个像素才允许输出（裁剪后有效宽度 357-100+1 = 258 列）。",
+      "// 窗口内的像素原样送出并置高 O_raw8_valid，窗口外的像素被丢弃（valid 拉低、data 清零），",
+      "// 这样后级拿到的就是一帧固定的 258 x 602 子图。"
+     ]
+    },
+    {
+     "anchor": "    reg[11:0] S_col_cnt;",
+     "lines": [
+      "//---- 内部信号声明 ----",
+      "// S_col_cnt：行内像素（列）计数器，valid 期间累加、valid 无效时清零；",
+      "// S_line_cnt：已完成的行（行）计数器，帧起始清零；",
+      "// S_line_en：由 S_line_cnt 译码出的行窗口使能；",
+      "// S_raw8_valid_n_edge：valid 的下降沿，代表一行数据结束。"
+     ]
+    },
+    {
+     "anchor": "    assign S_raw8_valid_n_edge = ~I_raw8_valid & S_raw8_valid_1d;",
+     "lines": [
+      "//---- valid 下降沿检测 ----",
+      "// 打一拍后与本拍反相相与，得到 valid 的下降沿；",
+      "// RAW8 是一行连续若干个有效拍，下降沿即这一行数据送完，用它给行计数器加一。"
+     ]
+    },
+    {
+     "anchor": "        if(S_line_cnt >= 'd126 && S_line_cnt <= 'd727)",
+     "lines": [
+      "//---- 行窗口译码 ----",
+      "// 只保留第 126 行到第 727 行（含端点）之间的图像行，其余行整行丢弃；",
+      "// 常量含义：裁掉上下两侧的无效/黑边区域，裁剪后有效高度 = 727-126+1 = 602 行。"
+     ]
+    },
+    {
+     "anchor": "        if(I_raw8_valid && S_col_cnt >= 'd100 && S_col_cnt <= 'd357 && S_line_en)",
+     "lines": [
+      "//---- 像素输出门控 ----",
+      "// 三个条件同时满足才算窗口内像素：本拍 valid、列号在 100..357 之间、当前行在行窗口内；",
+      "// 常量含义：裁掉左右两侧，裁剪后有效宽度 = 357-100+1 = 258 列；",
+      "// 条件不满足时输出清零而不是保持，避免后级把窗口外的数据当成有效像素。"
+     ]
+    },
+    {
+     "anchor": "//  cwc2 cwc2_inst",
+     "lines": [
+      "//---- 已废弃的 ChipWatcher 调试例化（保留作历史记录，不参与综合） ----",
+      "// 这是当时用 TD ChipWatcher 在线抓信号的草稿：",
+      "// 把本模块的输入、输出与全部内部计数器接到 probe0..probe12 上观察窗口边界；",
+      "// 整段都在注释里，故 cwc2 模块是否存在都不影响本文件的编译。"
+     ]
+    }
+   ],
+   "insert_seqs": [
+    [
+     {
+      "anchor": "    always @(posedge I_clk) begin",
+      "lines": []
+     },
+     {
+      "anchor": "    always @(posedge I_clk) begin",
+      "lines": [
+       "//---- 行内列计数器 S_col_cnt ----",
+       "// valid 有效时逐拍累加，代表当前像素在本行中的列号（从 0 开始）；",
+       "// valid 无效（行间隙）时清零，为下一行重新计数。"
+      ]
+     },
+     {
+      "anchor": "    always @(posedge I_clk) begin",
+      "lines": [
+       "//---- 行窗口使能打拍 ----",
+       "// 把组合译码出的行窗口标志打一拍，供像素输出级使用。"
+      ]
+     },
+     {
+      "anchor": "    always @(posedge I_clk) begin",
+      "lines": [
+       "//---- 裁剪后像素输出 ----"
+      ]
+     },
+     {
+      "anchor": "    always @(posedge I_clk) begin",
+      "lines": [
+       "//---- 帧起始/结束透传 ----",
+       "// frame_start / frame_end 与像素流一起打一拍，保证帧边界与裁剪后的像素流保持同一节拍；",
+       "// 这里不做任何修饰，只让它们的延时与 O_raw8_valid / O_raw8_data 一致。"
+      ]
+     }
+    ]
+   ]
+  },
+  {
+   "path": "ps_wrapper.v",
+   "header": [
+    "//=============================================================================",
+    "// 文件      : ps_wrapper.v",
+    "// 模块      : ps_wrapper",
+    "// 功能      : MCU（软核处理器）子系统包装：把 MCU 的 JTAG 调试口、APB 外设总线、两路 UART 和 8 路 GPIO 引到端口上，",
+    "//             并把 GPIO 做成三态双向口；本工程未使用的 AHB 主口全部空置。",
+    "//             注意：gpio3 / gpio4 的方向控制被改接成 S_gpio5_out / S_gpio6_out（见正文），与其余 GPIO 的写法不同。",
+    "// 数据通路  : JTAG（I_jtag_tck/tms/tdi -> O_jtag_tdo）与 APB（paddr/psel/penable/pwrite/pwdata/pstrobe/pprot/prdata/pready/pslverr）",
+    "//             以及 uart0/uart1 直达 MCU 端口；GPIO 通过 S_gpioN_out / S_gpioN_dir / S_gpioN_in 三根线完成三态双向连接。",
+    "//             本工程未使用的 AHB 主接口全部悬空，只把 hrdata/hresp/hready 接常量以保持接口电平确定。",
+    "// 时钟/复位 : I_core_clk 为 MCU 内核时钟，I_timer_clk 为定时器时钟，I_apb_clk 为 APB 总线时钟；",
+    "//             I_rst 高有效，同时驱动 core_reset 与 por_reset；I_apb_rst 单独复位 APB 从机侧。",
+    "//             本文件内部没有时序逻辑，只做端口连接与三态描述，故不存在跨时钟域处理。",
+    "// 依赖      : MCU（安路软核，定义见 ip_source/MCU/MCU.v）；无其他子模块。",
+    "// 综合/实现 : 纯端口连接 + 三态 assign，可综合。未被 td_project/camera_to_dsi_display.al 收录，",
+    "//             全树也未搜索到 ps_wrapper 的例化点，疑似未接入本工程（未能确认是否被例化）。",
+    "//-----------------------------------------------------------------------------",
+    "//   <日期不详>  自官方 lab3 基线导入后本工程未见针对本文件的修改",
+    "//-----------------------------------------------------------------------------",
+    "// 2026-10-09 全树做过一次标识符改名（只改名字不改逻辑），对照见 E:\\FPGA\\_analysis\\rename_report.txt",
+    "//============================================================================="
+   ],
+   "inserts": [
+    {
+     "anchor": "module ps_wrapper (",
+     "lines": [
+      "",
+      "//---- 模块说明 ----",
+      "// 本文件是 MCU 子系统的外壳：内部把安路软核 MCU 例化一次，把它的调试口、总线口、串口和 GPIO 引出到顶层；",
+      "// GPIO 采用 in / out / dir 三根内部线 + 一条三态 assign 的标准接法，方向由 MCU 自己决定。"
+     ]
+    },
+    {
+     "anchor": "    wire S_gpio0_in;",
+     "lines": [
+      "//---- GPIO 内部连线声明 ----",
+      "// 每路 GPIO 三根线：S_gpioN_out 输出值、S_gpioN_dir 方向（1 = 输入/高阻）、S_gpioN_in 回读值。"
+     ]
+    },
+    {
+     "anchor": "    assign IO_gpio0 = S_gpio0_dir ? 1'bz : S_gpio0_out;",
+     "lines": [
+      "//---- GPIO 三态双向驱动（标准接法） ----",
+      "// dir 有效时把引脚置为高阻以便外部驱动，否则把 out 值驱动到引脚；",
+      "// 同时把引脚电平回读进 S_gpioN_in 交给 MCU。gpio0 / 1 / 2 / 5 / 6 / 7 都是这种标准写法。"
+     ]
+    },
+    {
+     "anchor": "    MCU u_MCU(",
+     "lines": [
+      "//---- MCU 软核例化 ----",
+      "// core_reset 与 por_reset 都接 I_rst，上电即复位；nmi / clic_irq 接地表示本工程不使用中断；",
+      "// AHB 主接口不使用：ahb_clk/htrans/hwrite/haddr/hsize/hburst/hprot/hmastlock/hwdata 全部悬空，",
+      "// hrdata/hresp/hready 接常量是为了让未使用的从机侧输入电平确定，避免悬空推断出锁存。"
+     ]
+    }
+   ],
+   "insert_seqs": [
+    [
+     {
+      "anchor": "//    assign IO_gpio3 = S_gpio3_dir ? 1'bz : S_gpio3_out;",
+      "lines": [
+       "// 下面是 gpio3 / gpio4 原本的标准三态写法，已被注释停用（改用后面的非常规写法）。"
+      ]
+     },
+     {
+      "anchor": "    assign IO_gpio3 = S_gpio5_out ? 1'bz : S_gpio3_out;",
+      "lines": [
+       "//---- gpio3 / gpio4 的特殊三态写法 ----",
+       "// 与标准写法的区别：这里用 S_gpio5_out / S_gpio6_out 的输出值当方向控制，而不是各自的 S_gpioN_dir；",
+       "// 即 gpio3 的三态由 gpio5 的输出电平决定、gpio4 的三态由 gpio6 的输出电平决定；",
+       "// S_gpio3_dir / S_gpio4_dir 仍然连到 MCU（见下方例化），但在这两条 assign 里没有被使用。",
+       "// 按代码字面如实记录，未做任何改动。"
+      ]
+     },
+     {
+      "anchor": "    assign IO_gpio4 = S_gpio6_out ? 1'bz : S_gpio4_out;",
+      "lines": [
+       "// gpio4 与 gpio3 采用同样的特殊写法：三态由 S_gpio6_out 决定，回读仍接到 S_gpio4_in。"
+      ]
+     }
+    ]
+   ]
+  }
+ ]
+}

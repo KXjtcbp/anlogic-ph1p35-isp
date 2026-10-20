@@ -1,0 +1,490 @@
+
+########## p4 ##########
+  
+                                                          TangDynasty®调试工具使用指南 
+SWUG111                             www.anlogic.com                                   3 
+2024.11 
+1 概述 
+本文档主要介绍了TangDynasty®（以下简称TD 软件）软件中调试工具ChipWatcher 的界面操作和
+使用，可协助用户在进行逻辑功能上板调试时，快速熟悉和使用这些调试工具。 
+2 ChipWatcher 
+2.1 ChipWatcher 简介 
+ChipWatcher 是TD 内部逻辑在线分析工具。通过ChipWatcher，用户无需借助外部设备即可在线监
+测设计内部信号的变化情况。在 ChipWatcher 中，用户可同时添加多个观察信号；支持多个时钟域，
+每个时钟域分为不同界面独立观察信号、独立设置采样深度、触发条件及触发位置等。ChipWatcher 支
+持多种插入方式，如源码插入ChipWatcher IP、源码添加Mark Debug 命令、Read Design 后添加Mark 
+Debug 标记、Optimize Gate 后插入ChipWatcher，既可监测源代码信号也可监测网表信号。 
+ChipWatcher 的工作流程如下图2-1 所示。 
+ 
+图 2-1 ChipWatcher 工作流程图 
+Verilog/VHDL 
+Start 
+1.Add ChipWatcher IP in Design 
+2.Add Mark Debug in Design 
+Read Design 
+4.Add signal in ChipWatcher 
+3.Add Mark Debug in ChipWatcher 
+End 
+Optimize Gate 
+PHY Opt 
+Download bit file 
+Trigger and Watch 
+Optimize RTL 
+
+
+########## p5 ##########
+  
+                                                          TangDynasty®调试工具使用指南 
+SWUG111                             www.anlogic.com                                   4 
+2024.11 
+2.2 ChipWatcher 插入方式 
+ChipWatcher 分为源码插入ChipWatcher IP 方式、源码添加Mark Debug 命令方式、Read Design 
+后添加Mark Debug 标记方式、Optimize Gate 后插入ChipWatcher 方式。 
+2.2.1 ChipWatcher IP 插入方式 
+通过在工程源码中例化ChipWatcher IP，将想要监测的信号直接接入IP 的探针即Probe 上即可。
+可支持插入多个ChipWatcher IP，目前最大能支持64 个。 
+2.2.1.1 IP 生成 
+在已打开的工程上，点击菜单栏Tools -> IP Catalog，即可打开IP 选择界面，如下图所示，选
+择Debug 分类下的ChipWatcher。 
+ 
+图 2-2 IP 选择 
+双击ChipWatcher IP 会弹窗Setup Exporting Options 窗口，用户可以自定义选择IP 路径和IP 
+Name，如下图所示。 
+ 
+图 2-3 setup exporting options 
+ 
+ 
+
+
+########## p8 ##########
+  
+                                                          TangDynasty®调试工具使用指南 
+SWUG111                             www.anlogic.com                                   7 
+2024.11 
+级数来优化时序，或通过减少Probe 个数、位宽、降低触发时钟频率等方式来解决。 
+2.2.1.2 IP 例化 
+通过IP Catalog 生成ip_cwc，下图所示为IP 源文件接口。 
+ 
+图 2-6 IP 源文件接口示例 
+在工程源文件中例化ChipWatcher IP，如下图所示。 
+ 
+图 2-7 IP 例化示例 
+2.2.1.3 IP 插入方式Flow 编译 
+在工程源码中例化完成ChipWatcher IP 保存源文件后，如果中途不需要在Optimize Gate 后插入
+ChipWatcher 添加其它监测网表信号，则Flow 编译可以从Read Design 一直跑完Generate Bitstream，
+中途无需其它操作。Flow 跑完后，即可打开ChipWatcher 界面进行下载、波形监测等操作，可参照本
+文档第2.4 章节下载和波形观测查看具体操作流程。 
+需注意的是，如果在时序未收敛的情况下进行上板，采集到的波形数据可能不准确。 
+2.2.2 Mark Debug 方式 
+Mark Debug 方式是将想要监测的信号通过添加Mark Debug 标志后，软件即会自动识别该信号的驱
+动时钟源作为触发时钟并根据时钟分配到相应ChipWatcher instance 的探针即Probe 上，即可实现对
+该信号进行监测。该方式可通过两种途径对信号进行Mark Debug：一种是通过在工程源文件中添加Mark 
+Debug 命令进行标记；另一种是在Flow 编译完Read Design 后通过ChipWatcher 的Mark Debug 界面
+进行标记。 
+
+
+########## p9 ##########
+  
+                                                          TangDynasty®调试工具使用指南 
+SWUG111                             www.anlogic.com                                   8 
+2024.11 
+2.2.2.1 源码中添加Mark Debug 命令标记 
+2.2.2.2 Verilog 源文件命令格式 
+在Verilog 源文件中，如对信号test 进行Mark Debug 标记有如下几种方式，选择其中任意命令都
+可以，命令不区分大小写。只能在信号定义处进行Mark Debug 标记。 
+（*MARK_DEBUG = “TRUE”*）reg test; 
+reg test;//synthesis MARK_DEBUG = TRUE 
+reg test;// synthesis MARK_DEBUG = 1 
+reg test;// synthesis MARK_DEBUG  
+reg test;/*synthesis MARK_DEBUG = TRUE*/ 
+reg test;/*synthesis MARK_DEBUG = 1*/ 
+reg test;/*synthesis MARK_DEBUG*/ 
+Tips：推荐使用（*MARK_DEBUG = “TRUE”*）reg test;方式，其他注释方式请按照上面介绍放于
+所标注信号后面，才能精准定位到想要标记的信号。 
+2.2.2.3 VHDL 源文件命令格式 
+在VHDL 源文件中，如对信号test 进行Mark Debug 标记方式如下，命令不区分大小写。只能在信
+号定义处进行Mark Debug 标记。 
+signal test:std_logic; 
+attribute MARK_DEBUG : BOOLEAN;  
+attribute MARK_DEBUG of test_cnt : signal is TRUE; 
+注意，和IO Logic Model 相接的输入/输出Port，不能被Mark Debug，会导致IO Logic 无法被
+Mapping，在Opt Gate 阶段报错。 
+2.2.2.4 源码添加Mark Debug Flow 编译 
+当源码添加完Mark Debug 命令标记，保存文件后，即可运行Flow，如果中途不需要添加信号进监
+测列表，则Flow 编译可以从Read Design 一直跑完Generate Bitstream，中途无需其它操作。软件自
+动会将这些信号按不同驱动时钟分配不同ChipWatcher Instance，这些ChipWatcher Instance 都为默
+认配置，即：采样深度默认为1024，默认勾选Data Enable 和Trigger Enable，默认不勾选Power On 
+Trigger，Input Pipe Stage 和Output Pipe Stage 默认值为0。如需更改配置信息，可在Opt Gate
+
+
+########## p10 ##########
+  
+                                                          TangDynasty®调试工具使用指南 
+SWUG111                             www.anlogic.com                                   9 
+2024.11 
+后打开ChipWatcher 进行配置更改，相关操作请参考本文档第2.2.3 章节Optimize Gate 后插入方式。 
+Flow 跑完后，即可打开ChipWatcher 界面进行下载、波形监测等操作，可参照本文档第2.4 章节
+下载和波形观测查看具体操作流程。 
+注意，如果时序未收敛的情况下，进行上板，采集到的波形数据可能不准确。 
+2.2.2.5 Read Design 后添加Mark Debug 标记 
+Read Design 后添加Mark Debug 标记，为用户提供界面添加Mark Debug 标记的方式，相比源码
+添加Mark Debug 命令的方式更为便捷,如：不需要更改源代码、通过对多个信号一键添加Mark Debug
+标记，也可通过一键清除所有在Read Design 上添加的标记等便捷操作。 
+2.2.2.6 Mark Debug 界面打开方式 
+Flow 运行完Read Design 后，即可通过点击工具栏上的ChipWatcher 图标,如下图所示。
+ 
+图 2-8 ChipWatcher 工具栏图标 
+或者通过双击Hierarchy 下面的ChipWatcher，如下图所示。 
+ 
+图 2-9 Hierarchy ChipWatcher 
+也可通过菜单栏点选Tools -> Debug Tools -> ChipWatcher，如下图所示。 
+ 
+图 2-10 菜单栏ChipWatcher 
+
+
+########## p18 ##########
+  
+                                                          TangDynasty®调试工具使用指南 
+SWUG111                             www.anlogic.com                                   17 
+2024.11 
+Read Design 后Mark Debug Flow 编译 
+当Mark Debug 界面操作保存后，即可接着运行Flow，如果中途不需要添加信号进监测列表，则
+Flow 编译可以一直跑完Generate Bitstream，中途无需其它操作。软件自动会将这些信号按不同驱动
+时钟分配不同ChipWatcher Instance，这些ChipWatcher Instance 都为默认配置，即：采样深度默认
+为1024，默认勾选Data Enable 和Trigger Enable，默认不勾选Power On Trigger，Input Pipe Stage 
+和Output Pipe Stage 默认值为0。如需更改配置信息，可在Opt Gate 后打开ChipWatcher 进行配置
+更改，相关操作请参考本文档第2.2.3 章节Optimize Gate 后插入方式。 
+Flow 跑完后，即可打开ChipWatcher 界面进行下载、波形监测等操作，可参照本文档第2.4 章节
+下载和波形观测章节查看具体操作流程。 
+需注意的是，如果在时序未收敛的情况下进行上板，采集到的波形数据可能不准确。 
+2.2.3 Optimize Gate 后插入方式  
+ChipWatcher 支持在Flow 跑完Optimize Gate 后插入ChipWatcher。该插入方式可在Optimize 
+Gate 阶段运行完成并执行Open Run 后打开ChipWatcher 界面添加需要监测的网表信号。 
+如果Flow 已经跑完所有或一部分Phy Opt 的流程时，则不需要重新跑Flow 到Optimize Gate，可
+在主界面下方Flow Runs 窗口中通过鼠标选择phy(active) 右键点击Reset runs，如下图所示，等待
+自动执行完Open Run 后即可打开ChipWatcher 界面添加需要监测的网表信号。 
+ 
+图 2-22 Reset Runs 
+2.2.3.1 ChipWatcher 设置界面 
+通过点击工具栏上的ChipWatcher 图标，或者通过双击Hierarchy 下面的ChipWatcher，也可通过
+
+
+########## p19 ##########
+  
+                                                          TangDynasty®调试工具使用指南 
+SWUG111                             www.anlogic.com                                   18 
+2024.11 
+菜单栏点选Tools -> Debug Tools -> ChipWatcher。 
+即可打开ChipWatcher 设置界面，如下图所示。ChipWatcher 设置界面分为两个区域：界面上方为
+菜单栏；界面下方分为Net View 和Instance View 两个页面，默认显示Net View 页面。在该界面，用
+户只需在Net View 页面添加所需信号，软件就会自动识别该信号的时钟域，并根据所在的时钟域自动
+分配ChipWatcher Instance，在Instance View 界面即是以ChipWatcher Instance 为单位进行显示各
+Instance 下的监测信号。如果同一触发时钟下的信号个数超出了一个ChipWatcher Instance 的Probe
+数即256 个，则会自动增加一个Instance。 
+ 
+图 2-23 ChipWatcher 设置主界面 
+2.2.3.2 菜单栏介绍 
+ChipWatcher 设置界面菜单栏如下图所示。 
+ 
+图 2-24 ChipWatcher 设置菜单栏 
+菜单栏按钮作用介绍如下： 
+ 
+Save：用于保存ChipWatcher 设置，只有设置更改了才会高亮显示可进行保存操作，没有更改则为
+置灰状态。 
+菜单栏 
+监测信号显示 
+添加页面 
+ChipWatcher Instance  
+显示页面 
+
+
+########## p32 ##########
+  
+                                                          TangDynasty®调试工具使用指南 
+SWUG111                             www.anlogic.com                                   31 
+2024.11 
+2.2.3.5 Optimize Gate 后插入方式Flow 编译  
+ChipWatcher 设置界面保存完成并关闭后，Flow 编译可以继续运行Opt Phy，直到跑完Generate 
+Bitstream，中途无需其它操作。注意，编译前需确认Hierarchy 的全局设置是否使能了ChipWatcher，
+即是否高亮，请参考第2.3 章节ChipWatcher 全局设置查看具体确认方式。Flow 跑完后，即可打开
+Watch 界面进行下载、波形监测等操作，可参照本文档第2.4 章节下载和波形观测章节查看具体操作流
+程。 
+需注意的是，如果在时序未收敛的情况下进行上板测试，采集到的波形数据可能不准确。 
+ 
+ 
+
+
+########## p33 ##########
+  
+                                                          TangDynasty®调试工具使用指南 
+SWUG111                             www.anlogic.com                                   32 
+2024.11 
+2.3 ChipWatcher 全局设置 
+ChipWatcher 可通过Hierarchy 下点击ChipWatcher 右键全局设置功能进行使能和删除操作。如下
+图所示。包括Enable ChipWatcher、Disable ChipWatcher、Clear up ChipWatcher。 
+ 
+图 2-45 ChipWatcher 全局设置功能 
+2.3.1 Enable ChipWatcher 
+Enable ChipWatcher，即使能ChipWatcher，工程默认为Enable ChipWatcher，即ChipWatcher 有
+效并可操作状态。如下图所示，当Enable ChipWatcher 时，Hierarchy 下ChipWatcher 为黑色字体状
+态。 
+ 
+图 2-46 Enable ChipWatcher 
+当需要正常使用ChipWatcher 功能时，在Flow 编译前需确保Hierarchy 下ChipWatcher 为黑色字
+体即Enable ChipWatcher 状态，否则无法正常打开并使用ChipWatcher 功能。 
+2.3.2 Disable ChipWatcher 
+Disable ChipWatcher，即使ChipWatcher 无效，使ChipWatcher 为不可用状态。如下图所示，当
+Disable ChipWatcher 时，Hierarchy 下ChipWatcher 为灰色字体状态。 
+ 
+图 2-47 Disable ChipWatcher 
+
+
+########## p34 ##########
+  
+                                                          TangDynasty®调试工具使用指南 
+SWUG111                             www.anlogic.com                                   33 
+2024.11 
+被设置为Disable ChipWatcher，则Optimize Gate 后插入的ChipWatcher 无效，且ChipWatcher
+所占资源将被释放（源码中例化的ChipWatcher IP 和Mark Debug 标记所插入的ChipWatcher Instance
+所占资源除外）。此情况下，如果想打开ChipWatcher 界面，会弹窗提示需使能ChipWatcher，从而无
+法打开界面。如下图所示。 
+ 
+图 2-48 Disable ChipWatcher 打开界面时Warning 弹窗  
+当工程暂时不需要进行ChipWatcher 调试时，但又不想删除相关调试信号记录，则可设置Disable 
+ChipWatcher 来释放资源。 
+如果工程被设置为Disable ChipWatcher 并编译完Opt Phy 所有步骤后，此时想重新设置Enable 
+ChipWatcher，Flow 的编译状态不会更改，如需使能ChipWatcher 生效并使用，需重新编译完成Opt Phy
+下所有步骤。 
+2.3.1 Clear Up ChipWatcher 
+Clear Up ChipWatcher，即清除ChipWatcher，会清除Read Design 后Mark Debug 界面所有标记
+和设置以及Optimize Gate 后添加的所有调试信号以及配置信息，但不会清除源码中例化的
+ChipWatcher IP 和添加的Mark Debug 标记，即源码插入的ChipWatcher Instance 仍然有效。 
+当右键点选Clear Up ChipWatcher 时，会弹出如下图所示的Warning 弹窗，提示是否确认删除，
+如确认则点击Yes，如取消该操作则点击No。 
+ 
+图 2-49 Clear Up ChipWatcher 时Warning 弹窗  
+如果操作了Clear Up ChipWatcher 后，Flow 编译状态不会变化，如需重新使用ChipWatcher 则需
+重新添加监测信号，并重新编译相关Flow。 
+ 
+ 
+
+
+########## p35 ##########
+  
+                                                          TangDynasty®调试工具使用指南 
+SWUG111                             www.anlogic.com                                   34 
+2024.11 
+2.4 ChipWatcher 下载和波形观测 
+2.4.1 Watch 主界面 
+编译完成Generate Bitstream 后，打开ChipWatcher 界面，点击界面上方的Watch 按钮，如下图
+所示。 
+ 
+图 2-50 Watch 按钮 
+即可进入Watch 主界面，主界面如下图所示，分为上、下两个部分，上面部分为下载窗口，下面部
+分为波形观察窗口。 
+ 
+图 2-51 Watch 主界面 
+2.4.2 bit 文件下载 
+Watch 界面打开后，用户首先需要将bit 文件下载至器件，保证器件内的bit 文件是包含现有
+ChipWatcher 的，否则无法触发并报错。 
+bit 文件下载窗口如下图所示，当硬件平台链接好后，点击下图中红色框的下载按钮，即可开始下
+载。 
+
+
+########## p36 ##########
+  
+                                                          TangDynasty®调试工具使用指南 
+SWUG111                             www.anlogic.com                                   35 
+2024.11 
+ 
+图 2-52 bit 文件下载窗口 
+该窗口默认是打开的，如果被关闭，可点击上方菜单栏View，勾选 Jtag Configuration，如下图
+所示，也可通过取消勾选，关闭该窗口。  
+ 
+图 2-53 打开/关闭下载窗口 
+下载窗口中相关参数属性如下。 
+ 
+Device：器件自动识别显示，如未显示器件请检查相关硬件平台是否链接好。 
+ 
+Bit File：bit 文件，自动识别，用户不可更改。 
+ 
+Download Speed：下载速率，默认为6Mbps，用户可更改下载速率，不同器件速率范围有所不同。 
+ 
+Current Device：当前芯片，用于级联下载选择。 
+下载过程中，Watch 界面最下方有下载进度条显示，直到显示100%，即为下载成功，如下图所示。 
+ 
+图 2-54 bit 文件下载进度显示 
+ 
+ 
+
+
+########## p37 ##########
+  
+                                                          TangDynasty®调试工具使用指南 
+SWUG111                             www.anlogic.com                                   36 
+2024.11 
+2.4.3 波形采样观察 
+Watch 界面下半部分，即为波形采样观察窗口，如下图所示。波形采样观察窗口分为不同功能区，
+包括ChipWatcher 标题区，工具栏，数据波形观察区，采样触发条件设置区。 
+ChipWatcher 
+标题区
+工具栏
+数据波形
+观察区
+采样触发
+条件设置
+区
+ 
+图 2-55 波形采样观察窗口 
+2.4.3.1 ChipWatcher 标题区 
+当工程中有例化多个时钟域的ChipWatcher instance 时，默认每个ChipWatcher instance 都会
+在标题区列出，波形文件名与IP 例化名或ChipWatcher 设置界面instance 名字对应。通过鼠标点击不
+同ChipWatcher instance，从而切换到不同页面。用户可以鼠标点击“+”号，在其下拉列表中通过取
+消勾选/勾选来隐藏/显示相应的ChipWatcher instance。如下图所示。 
+ 
+图 2-56 ChipWatcher 标题区 
+2.4.3.2 工具栏 
+工具栏区，展示有各种功能的按钮，用于控制波形显示，如下图所示。 
+ 
+图 2-57 工具栏 
+工具栏各图标的意义如下所示，解析顺序对应工具栏从左往右的图标按钮。 
+ 
+Find：用于波形显示区信号列表查找信号。 
+
+
+########## p38 ##########
+  
+                                                          TangDynasty®调试工具使用指南 
+SWUG111                             www.anlogic.com                                   37 
+2024.11 
+ 
+Instant Trigger：立即触发，点击该按钮即忽略触发条件设置，立即刷新数据波形。 
+ 
+Single Trigger：单次触发，点击该按钮，则根据触发条件设置进行采样触发一次。  
+ 
+Continue Trigger：连续触发，即鼠标点击一次，会根据触发条件设置，连续进行采样触发，直
+到点击Stop 按钮停止触发。 
+ 
+Stop：停止触发，即鼠标点击一次，停止触发动作。 
+ 
+Add Signals：从波形显示库中添加信号进入观察列表。 
+ 
+Delete Selected Signals：从波形观察列表中删除选中信号。 
+ 
+Expand all：信号展开显示。 
+ 
+Collapse all：信号折叠显示。 
+ 
+Copy：复制所选信号，支持选择多个信号。 
+ 
+Paste：粘贴复制的信号到所选位置，支持多个信号。 
+ 
+Previous edge：点击跳转到上一个值跳变沿；选择某个Bit 信号或Bus 信号并点选黄色竖线
+Value bar 后，可通过此工具将Value bar 精确移动到Bit 信号的上一个跳变沿或Bus 信号前一个
+值变化点，如果采样范围内值没有变化则Value bar 不会移动。 
+ 
+Next edge：点击跳转到下一个值跳变沿；选择某个Bit 信号或Bus 信号并点选黄色竖线Value 
+bar 后，可通过此工具将Value bar 精确移动到Bit 信号的下一个跳变沿或Bus 信号下一个值变化
+点，如果采样范围内值没有变化则Value bar 不会移动。 
+ 
+Add a new time bar：增加一个新的灰色竖线time bar， time bar 用于标记用，可添加多个。 
+ 
+Delete current time bar：用于删除鼠标选中的time bar。 
+ 
+Previous time bar：点击跳转到上一个time bar；点选黄色竖线Value bar 后，可通过此工具
+将Value bar 精确移动到前一个灰色竖线time bar 或红色竖线Trigger bar 的位置。 
+ 
+Next time bar：点击跳转到上一个time bar；点选黄色竖线Value bar 后，可通过此工具将
+Value bar 精确移动到前一个灰色竖线time bar 或红色竖线Trigger bar 的位置。 
+ 
+Show edge statistic bar：鼠标点击，可开启一对测量bar，用于测量单bit 信号的上、下沿
+个数。 
+ 
+Clear Graphs：点击可清除数据波形窗口的波形。 
+ 
+Fit for View：点击可将波形显示界面进行最大化突出显示，再次点击可还原窗口。 
+ 
+ 
+
+
+########## p48 ##########
+  
+                                                          TangDynasty®调试工具使用指南 
+SWUG111                             www.anlogic.com                                   47 
+2024.11 
+导出的.csv 文件以表格的形式，展示波形数据，如下图所示。Sample 栏为采样位置点；Trigger 栏
+为触发点，为1 表示触发成功的位置；其他栏为Probe 信号值。 
+ 
+图 2-81 导出.csv 文件格式 
+2.4.3.6 ChipWatcher 上电触发功能 
+ChipWatcher 支持上电触发功能，即通过设置上电触发条件后，跑Flow 并生成bit 文件进行下
+载，在bit 文件加载完成后，即可根据触发条件进行自动触发。 
+上电触发设置流程分为如下几个步骤。 
+ 第一步，勾选Power On Trigger 选项。无论是IP 插入方式，还是Gate 后插入方式，都需要在
+ChipWatcher 设置界面将需要上电触发的ChipWatcher Instance 勾选Power On Trigger 选项。
+如下图所示。勾选Power On Trigger 选项后，ChipWatcher 设置界面上方的Watch 按钮会被点亮。 
+ 
+图 2-82 勾选Power On Trigger 
+ 第二步，进入Watch 界面设置上电触发条件。点击ChipWatcher 设置界面上方的Watch 按钮即可进
+入Watch 界面设置上电触发所要查看的信号和触发条件。仅在设置界面勾选了Power On Trigger 
+的ChipWatcher Instance 才能进行操作添加信号和触发条件设置，没有勾选Power On Trigger 的
+
+
+########## p49 ##########
+  
+                                                          TangDynasty®调试工具使用指南 
+SWUG111                             www.anlogic.com                                   48 
+2024.11 
+ChipWatcher Instance 则为置灰状态无法操作。如下图所示，设置了lock 信号上升沿触发，进行
+保存后并关掉Watch 界面。 
+ 
+图 2-83 上电触发条件设置 
+ 第三步，ChipWatcher 设置完成后，Flow 接着往后运行Phy Opt 生成bit 文件。 
+ 第四步，打开ChipWatcher 界面，点击上方的Watch 按钮，进入Watch 界面进行下载完成后，就
+会自动触发，可以看到之前设置的上电触发条件的触发情况。如下图所示，为lock 信号上电触发
+情况。 
+ 
+图 2-84 上电触发示例 
+ 
+ 
+
+
+########## p50 ##########
+  
+                                                          TangDynasty®调试工具使用指南 
+SWUG111                             www.anlogic.com                                   49 
+2024.11 
+2.5 ChipWatcher 离线调试 
+ChipWatcher 离线调试指脱离工程进行上板调试查看信号波形。如果需要进行离线调试的场景，用
+户需要导出工程配套的调试文件。 
+离线调试的流程步骤如下。 
+ 第一步，导出调试文件。 
+Flow 编译完成Generate Bitstream 生成bit 文件后，打开ChipWatcher 设置界面，点击
+ChipWatcher 界面上方Export 按钮，会弹出导出文件保存路径选择窗口，如下图所示。用户可自定义
+保存路径，如不选择文件夹则默认保存在工程路径下。导出文件包括compiled.bit，compiled.cwc，
+compiled.data 文件，其中.bit 和.cwc 为必要文件，.data 是波形配置文件，为非必要文件，需在Watch
+界面对相关波进行配置保存后才能导出。如有上电触发功能时或者有保存已设置的波形触发条件时，则
+需要同时加上.data 文件。当工程中有多个Run 时，则导出文件为当前Active Run 下的文件。 
+ 
+图 2-85 Export 按钮导出文件 
+导出完成后，会有导出成功弹窗，如下图所示，点击OK 即可。 
+ 
+图 2-86 导出成功提示 
+ 第二步，打开离线调试文件。 
+不需打开工程的情况下，直接打开ChipWatcher 界面，即会弹出如下图所示界面选择.cwc 文件，
+
+
+########## p51 ##########
+  
+                                                          TangDynasty®调试工具使用指南 
+SWUG111                             www.anlogic.com                                   50 
+2024.11 
+找到存储.cwc 和.bit 文件的路径，选择.cwc 文件点击OK 即可导入。 
+ 
+图 2-87 选择ChipWatcher 调试文件路径 
+离线文件导入成功后，界面如下图所示。所有设置属性都为只读模式，不可更改。 
+ 
+图 2-88 离线打开ChipWatcher 调试文件界面 
+ 第三步，下载和波形观测。 
+点击界面上方的Watch 按钮，即可进入Watch 界面进行下载和波形观测，如下图所示。Watch 界面
+的相关操作，可参考本文档第2.4 章节下载与波形观测。 
