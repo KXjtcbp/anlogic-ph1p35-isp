@@ -92,14 +92,14 @@ ax.text(58.2, 29.4, "旁路观察者：只收不发、无 tready，\n不占用�
 band(11.0, 21.8, "③ 显示通路（HDMI 像素域 75MHz / 串行域 375MHz）", "#c4b5fd")
 box(5, 12.2, 13, 6.2, "DDR2 帧缓存\nph1p35_324", C_DISP, 7.6, True)
 box(21, 12.2, 12, 6.2, "uivtc\n1280×720@60", C_DISP, 7.4)
-box(36, 12.2, 14, 6.2, "hdmi_mixer\n7 层 OSD 叠加", C_DISP, 7.6, True)
+box(36, 12.2, 14, 6.2, "hdmi_mixer\n8 层 OSD 叠加", C_DISP, 7.6, True)
 box(53, 12.2, 12, 6.2, "hdmi_tx\nHDMI 1.4b", C_DISP, 7.4, True)
 box(68, 12.2, 9, 6.2, "显示器\n1280×720", C_DISP, 7.4)
 for x1, x2 in ((18.2, 20.8), (33.2, 35.8), (50.2, 52.8), (65.2, 67.8)):
     arrow(x1, 15.3, x2, 15.3)
 arrow(91.5, 38.6, 91.5, 18.6)
 ax.text(92.4, 28.6, "128bit\n像素流", fontsize=6.9, va="center", color="#475569")
-ax.text(80.0, 13.4, "OSD 7 层：\nLogo｜CNT｜\n两行遥测｜MODE\n参数行｜运动框｜目标框", fontsize=6.6,
+ax.text(80.0, 13.4, "OSD 8 层：\nLogo｜CNT｜\n两行遥测｜MODE\n参数行｜运动框｜目标框", fontsize=6.6,
         color="#4c1d95", ha="left", va="center", linespacing=1.4)
 
 # ================= ④ 控制通路 =================
