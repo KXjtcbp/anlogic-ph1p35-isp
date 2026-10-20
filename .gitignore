@@ -108,3 +108,6 @@ Thumbs.db
 desktop.ini
 *.swp
 *~
+
+# 提交打包中间产物（由 _analysis/scripts 生成，不入库）
+/_submission/
