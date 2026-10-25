@@ -1,8 +1,8 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 """① 把系统框图插入比赛报告 §2（替换「待补充」占位）；② 生成给成员 B / C 的两份上手指南 docx。
 
 所有事实均取自当前工作区可核对的文件：
-  报告 = E:\\FPGA\\比赛报告_填空版_20261019.docx
+  报告 = E:\\FPGA\\比赛报告_填空版_20261023.docx
   资源 = proj\\baseline\\lab3\\td_project\\camera_to_dsi_display_Runs\\phy_1\\{route.qor, camera_to_dsi_display_phy.area}
   拨码 = design_top_wrapper.v 的 S_lsc_bypass / S_gamma_bypass / S_mot_en / S_mot_strict
 """
@@ -16,7 +16,7 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml.ns import qn
 from docx.oxml import OxmlElement
 
-REPORT = r"E:\FPGA\比赛报告_填空版_20261019.docx"
+REPORT = r"E:\FPGA\比赛报告_填空版_20261023.docx"
 FIG = r"E:\FPGA\系统框图_FPGA数据通路.png"
 
 
@@ -266,7 +266,7 @@ def sec_nowork(d):
     BUL(d, "综合与时序：E:\\TD 的 TangDynasty 命令行可跑完整 syn+phy 流程，"
            "驱动脚本是 _analysis\\misc\\td_run_direct.ps1，约 10~15 分钟出 route.qor 和 .bit。")
     BUL(d, "统计分析：_analysis\\scripts\\ 下大量 Python 脚本用于分析采集图，依赖 numpy 与 Pillow。")
-    BUL(d, "文档与报告：比赛报告在仓库根的 比赛报告_填空版_20261019.docx，"
+    BUL(d, "文档与报告：比赛报告在仓库根的 比赛报告_填空版_20261023.docx，"
            "工作区地图在 WORKSPACE_MAP.md。")
     H(d, "5.2  提交约定", 12, 8, 4)
     BUL(d, "分支：main 由负责人推送；你从 main 拉自己的分支（feat/xxx），改完提 PR 或直接请负责人合。")
@@ -338,7 +338,7 @@ def sec_c_own(d):
     BUL(d, "读一遍 hdmi_mixer.v 的图层判定链和字符 mux，搞清楚再加一层要动哪几处。"
            "注意字符索引位宽：窗口宽超过 256 像素时 S_par_idx 必须用 5bit，用 4bit 会回卷。")
     BUL(d, "报告里 §1.4 的两张表、§2.3 的模块清单需要随代码同步。报告的当前版本是 "
-           "比赛报告_填空版_20261019.docx，报告里的所有数值都要能在 phy.area / route.qor 里核对到。")
+           "比赛报告_填空版_20261023.docx，报告里的所有数值都要能在 phy.area / route.qor 里核对到。")
 
 
 def main():

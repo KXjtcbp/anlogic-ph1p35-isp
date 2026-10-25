@@ -1,178 +1,131 @@
-# FPGA 实时数字图像处理系统
+# 基于安路 PH1P35 的实时数字图像处理系统
 
-全国大学生嵌入式芯片与系统设计竞赛 · FPGA 创新设计赛道 · 选题二
-**基于安路 PH1P35 的实时数字图像处理系统**
+> 全国大学生嵌入式芯片与系统设计竞赛 · FPGA 创新设计赛道 · 选题二
+> 芯片 PH1P35MDG324（38184 等效 LUT / 42432 DFF / 40 DSP / 108 ERAM）
+> 工具 TangDynasty V6.2.168116 ｜ 截至 **2026-10-23**
+
+## 这是什么
+
+一条从 MIPI 摄像头到 HDMI 显示器的完整实时视频通路。**所有图像处理算法与时序控制都写在 FPGA 内部，不含任何额外处理器**，全链路无帧级缓存，处理延迟是固定流水线级数。
 
 ```
-MIPI 摄像头 (SC500, 1280x720@60)  ->  [ 安路 PH1P35 FPGA ]  ->  HDMI 显示器 (1280x720@60)
+SC500CS ── MIPI D-PHY RX ── CSI 解包 ── RAW10 解包（40bit / 4 像素）
+                                              │
+   ┌──────────────────────────────────────────┘
+   │  图像处理通路（ISP 域 60 MHz，AXI4-Stream 逐拍握手）
+   ▼
+demosaic ─ data128_96 ─ lsc ─ awb ─ isp_gamma ─ my_algo ─ data96_128
+   （BGGR）            （暗角） （含 wb_recip）（真 S 曲线）（五模式）   │
+                                                                      ▼
+                              DDR2 帧缓存 ─ uivtc(720p60) ─ hdmi_mixer(8 层 OSD) ─ HDMI 1.4b
+                                                                      │
+              旁路观察者（只收不发，不占主流水线节拍）                  ▼
+              ae_stat（帧亮度统计）／ obj_detect（颜色目标）      显示器 1280×720@60
+              motion_detect（块级帧差）
 ```
 
-* 芯片：安路 `PH1P35MDG324`（38184 LUT / 42432 DFF / 40 DSP / 108 ERAM / 板载 QSPI Flash 128 MB）
-* 工具：TangDynasty（TD）
-* 基线工程：官方 `lab_ex3_osd_SC500_720P` 二次开发
-* 截止：**2026-11-04**
+系统框图见 `系统框图_FPGA数据通路.png`；模块级台账见 `WORKSPACE_MAP.md`；目录导航见 `MOVE_INDEX.md`。
 
----
+## 现在什么状态
 
-## 快速开始（新队友先做这三步）
-
-```powershell
-git clone https://gitee.com/wuhu-captain-kx/fpgacnds.git
-cd fpgacnds
-git config --global core.autocrlf false        # ★必做★ 源文件是 GBK/CRLF 混合的
-
-python _analysis\scripts\compile_check.py      # 期望 exit=0: 39 / 40
-```
-
-**看到的数字必须是 `39 / 40`**，唯一允许失败的是 `ph1p35_ddr\ph1p35_324_ddr_wrapper.v`
-（原厂黑盒保护，不是错误）。出现别的失败 = 环境问题，先解决再往下走。
-
-然后读：
-
-| 你是谁 | 先读 |
+| | |
 |---|---|
-| 所有人 | [`docs/团队协作指南.md`](docs/团队协作指南.md)（环境、目录、铁律、构建命令） |
-| 所有人 | [`docs/协作流程与时间表.md`](docs/协作流程与时间表.md)（里程碑、分支约定、任务清单） |
-| 成员 B | [`docs/给成员B的prompt.md`](docs/给成员B的prompt.md) |
-| 成员 C | [`docs/给成员C的prompt.md`](docs/给成员C的prompt.md) |
-| 所有人 | [`HISTORY.md`](HISTORY.md)（项目历史与踩过的坑）、[`MOVE_INDEX.md`](MOVE_INDEX.md)（文件迁移索引） |
+| **交付比特流** | `proj/releases/2026-10-18_a2_hold60/camera_to_dsi_display.bit`<br>**md5 `DB39A5CEB2D0D9A11C797EA6712708CA`**（1 789 539 B） |
+| **已固化到板上** | ✅ QSPI Flash（BitWriter Program Flash，断电自启） |
+| **报告** | `比赛报告_填空版_20261023.docx` / `比赛报告_20261023.pdf` |
+| **演示素材** | `演示视频脚本_20261020.docx`、`演示视频旁白稿_20261023.docx`、`分镜检查表_20261023.docx` |
+| **海报** | `作品海报_20261020.pptx` / `.pdf`（A3 单页） |
 
----
+**已实现并被实测验证的功能**：黑电平扣除、BGGR 去马赛克、灰世界白平衡、镜头色彩暗角校正（LSC）、自动曝光（AE 闭环）、真 S 曲线、五模式风格化（直通 / 灰度 / 伪彩 / 五段彩条 / 卡通化）、块级运动检测（OSD 描框）、颜色目标检测（两帧确认 + 孤立块滤除 + 60 帧保持）、8 层 OSD、两行实时遥测。
 
-## 数据通路
+## 关键数字（交付版实测，非估算）
 
-FPGA 内部的 ISP 链路，全部在 [`proj/baseline/lab3/user_source/hdl_source/isp/isp_top.v`](proj/baseline/lab3/user_source/hdl_source/isp/isp_top.v) 里例化：
-
-```
-MIPI RX
-  └─ demosaic ............ 去马赛克（BGGR），内含黑电平扣除
-       └─ data128_96 ..... 128bit -> 96bit 位宽转换（4 像素/拍）
-            └─ awb ....... 自动白平衡（灰世界，4 通道并行，TD divider IP）
-                 └─ isp_gamma ..... 色调曲线（256 项查找表，2 拍流水）
-                      └─ my_algo .. 风格化算法集（直通/灰度/伪彩/彩条/卡通化）
-                           └─ data_96bit_to_128bit
-                                └─ hdmi_mixer ... OSD 叠加（Logo + CNT + MODE）
-                                     └─ HDMI TX
-```
-
-ISP 域时钟 = `S_csi_rx_clk` = `MIPI_RX_BYTE_CLK`，60 MHz，每拍 4 个像素。
-
-### 关键模块位置
-
-| 模块 | 路径 |
+| 指标 | 数值 |
 |---|---|
-| 顶层 | `proj/baseline/lab3/user_source/hdl_source/design_top_wrapper.v` |
-| ISP 顶层 | `proj/baseline/lab3/user_source/hdl_source/isp/isp_top.v` |
-| 黑电平扣除 | `proj/baseline/lab3/user_source/hdl_source/isp/demosaic_4x_2_0/mipi_to_raw_converter.v` |
-| 自动白平衡 | `proj/baseline/lab3/user_source/hdl_source/isp/awb/awb.v` |
-| 色调曲线 | `proj/baseline/lab3/user_source/hdl_source/isp/isp_gamma.v` |
-| 风格化算法 | `proj/baseline/lab3/user_source/hdl_source/my_algo/my_algo.v` |
-| 按键模式切换 | `proj/baseline/lab3/user_source/hdl_source/my_algo/key_mode_ctrl.v` |
-| OSD 叠加 | `proj/baseline/lab3/user_source/hdl_source/hdmi_mixer.v` |
-| 字符点阵库 | `proj/baseline/lab3/user_source/hdl_source/osd_char_lib.v` |
-| 传感器 I2C 配置 | `proj/baseline/lab3/user_source/hdl_source/uics500_cfg/` |
-| 引脚约束 | `proj/baseline/lab3/user_source/constraints_source/pin.adc` |
-| 时序约束 | `proj/baseline/lab3/td_project/camera_to_dsi_display.sdc` |
-| TD 工程 | `proj/baseline/lab3/td_project/camera_to_dsi_display.al` |
+| 分辨率 / 帧率 | 1280×720 @ 60 fps，帧计数与墙钟误差 < 0.3% |
+| Slice | 17 448 / 21 216 = **82.24%** |
+| LUT6 | 16 400 / 21 216 = **77.30%** |
+| DFF | 12 092 / 42 432 = 28.50% |
+| ERAM | 51 / 108 = **47.22%** |
+| DSP | 10 / 40 = 25.00% |
+| Setup WNS | **+104 ps**（TNS 0，违例 0） |
+| Hold WNS | **+21 ps**（TNS 0，违例 0） |
+| 帧级缓存 | 0（除 DDR2 链路的整帧外无额外帧存） |
 
----
+★**口径提醒**：TangDynasty 报的 `#lut6` 总量是 **21 216 个 6 输入 LUT**，与芯片宣传的 38 189 **等效 4 输入 LUT** 不是同一个单位，两个数字不能混用。本仓库所有百分比都按 TD 口径。**
 
-## 板载开关（实测极性：拨上 = 逻辑 0 = 启用）
+## 拨码与按键
 
-| 开关 | 引脚 | 功能 |
+★实测极性：**拨下 = 逻辑 1，拨上 = 逻辑 0**（与开发板手册的标注相反）★
+
+| 开关 | 引脚 | 拨上 | 拨下 |
+|---|---|---|---|
+| SW1 | A4 | LSC 校正**启用** | LSC **旁路** |
+| SW2 | B4 | S 曲线**启用** | S 曲线**旁路** |
+| SW3 | E11 | 运动检测**启用** | 运动检测**关闭**（位图清空） |
+| SW4 | D11 | 运动灵敏度**严格**（DIFF 12 / FLOOR 10 / 3 帧） | **宽松**（8 / 6 / 4） |
+
+| 按键 | 引脚 | 功能 |
 |---|---|---|
-| SW1 | A4 | 黑电平扣除旁路。**上 = 启用扣除**，下 = 直通 |
-| SW2 | B4 | 色调曲线旁路。**上 = 曲线启用**，下 = 直通 |
-| SW3 | E11 | 数字增益 ×2.000。上 = 开，下 = 关 |
-| SW4 | D11 | **★自动曝光 AE 使能（2026-10-12 起）★**。上 = AE 闭环运行，下/悬空 = AE 冻结在当前档 |
+| K1 | D5 | MODE 0 原图直通 |
+| K2 | A9 | MODE 1 灰度（BT.601 加权） |
+| K3 | B9 | MODE 2 伪彩热力图 |
+| K4 | C7 | MODE 4 卡通化 |
+| 任意键长按 ≥1 s | — | MODE 3 五段彩条 |
 
-> **SW4 变更说明**：SW4 原来只用来选模拟增益 4.000×/15.750×。AE（`ae_ctrl.v`）上线后
-> 模拟增益必须由闭环**连续**控制，所以 SW4 改成 AE 总开关。
-> 因此原来的"增益档位四选一"不再存在；模拟增益的连续范围由 AE 自己走
-> `{3e08,3e09} = 1.000× ~ 15.750×`，再乘 SW3 的数字增益得到总范围 `1.000× ~ 31.500×`。
->
-> ★**第一次烧 AE 版比特流，画面会比以前暗约 1/4**★，这是预期行为不是坏了：
-> 上电默认 = 模拟 4.000× × 数字（SW3 上）2.000× = **8.000×**，而改前 SW4上+SW3上 = 31.500×。
-> AE 会在约 0.5s（30 帧）内把模拟增益爬回 15.750×。把 SW4 拨下等 1 秒再拨上，
-> 可以完整看到 AE 重新爬升的过程。
+## 怎么跑起来
 
-K1–K4 按键切换 `my_algo` 的算法模式（0 直通 / 1 灰度 / 2 伪彩 / 3 彩条 / 4 卡通化）。
+**上板**：只接电源 + HDMI，上电约 10 秒画面自动出来，不需要 PC。
 
----
+**重新构建**（需要 TangDynasty 与硬件 license）：
 
-## 当前状态（2026-10-12）
+```bash
+# 1. 语法回归（期望 42/43，唯一失败是官方 DDR 黑盒保护，属正常）
+python _analysis/scripts/compile_check.py
 
-### 已验证 OK
+# 2. 综合 + 布线（约 5 分钟）
+pwsh -ExecutionPolicy Bypass -File _analysis/misc/td_run_direct.ps1 syn_1 phy_1
+```
 
-| 项 | 证据 |
-|---|---|
-| 采集链（HDMI 采集卡 → OBS → PNG）是 identity | 用 FPGA 内置的安路 Logo ROM 当色卡（6387 个不透明像素、579 种颜色、每个像素的精确 RGB 和屏幕位置都已知），实测色差 1~3 码 |
-| S 曲线确实在通路里 | 曲线开/关两张对比，把旁路图每个分位数过 LUT 预测，与实测差 **±3 码以内**，均值差 +0.38 |
-| 运行时增益下发正常 | SW3 数字增益 ×2 实测生效，`LUT[旁路图 p90 ÷ 2]` 与曲线图 p90 完全命中 |
-| 黑电平常数 `BLACK_LEVEL = 10'd56` | Testbench `ALL PASS, errors=0`；盖镜头实测 R=B=0、G≤1 码 |
-| 除法器 IP 在真实 valid 图案下正常 | 门级仿真 4 种 `start` 占空比（含真实 `1,1,0`），商永远正确、`done` 照常拉高 |
-| AWB 的数学是对的 | TB：输入 R/G=0.800 的整帧 → 输出 R/G = **1.0000**（精确） |
-| 测试图 bug 已修 | 传感器内置灰度测试图曾被四开关全「上」（推荐工作档）意外点开，已从 RTL 层面拔掉 |
+★**四条成功判据，缺一不可**★：① 日志里无 `HDL-8007` / 无 black box；② 目标模块在 `*.area` 里搜得到；③ `route.qor` 里 Setup WNS > 0 且 TNS = 0 且违例 = 0；④ `#RAMs` = 51、`#DSPs` = 10（数值突变说明模块被当冗余扫掉了）。
 
-### 未解决
+★**新增 `.v` 文件必须同时写三处**：`td_project/camera_to_dsi_display.al`、`td_project/camera_to_dsi_display_Runs/syn_1/*.prj`、`.../phy_1/*.prj`。TD 命令行只认 run 目录的 `.prj`，不认 `.al`；而 TD GUI 保存时会用 `.al` 回写 `.prj`。这是本项目踩过三次的坑。**
 
-| 问题 | 现状 |
-|---|---|
-| **AWB 有一个 −3 码的加性偏置** | 5 个场景实测 R−G ≈ −3.2 码、B−G ≈ −3.0 码，**与亮度无关**（Y 从 20 到 69 都成立）。灰世界要求 R/G = B/G = 1.000，实测 0.88~0.96。已排除公式、除法器、每帧增益重置、采集链 4 个方向 |
-| **色调曲线仍是「反 S」** | 指数 `A = B = 0.5`（两段都是凹函数），实测把动态范围从 199 码压到 148 码（对比度 **−26%**），画面发灰 |
-| **画面上没有任何参数数值** | 扩展要求原文点名「在画面上呈现参数变化信息」，现在 OSD 只有 `CNT` 和 `MODE` 两行 |
-| **没有自动曝光** | 曝光硬写死 `0x3e00/01/02 = 1990`（已顶满 `2×VTS−10`），增益只能手拨四选一。光照不可控时是开盲盒 |
-| QSPI 固化未做 | 官方硬性要求，但**已决定移到 11-04 之后的线下阶段**（见 `docs/协作流程与时间表.md` §8） |
+## 30 秒版本回滚
 
----
+所有历史比特流都在 `proj/releases/`（**33 个目录，每个都带 `.bit` + `route.qor` + `phy.area` + `readMe.txt`**）。
 
-## 资源与时序基线
+★**所有 `.bit` 都是 1 789 539 B，大小对不能证明版本对，必须比 md5**★
 
-最近一轮完整构建（2026-10-12 01:49，K=45 黑位版）：
-
-| 项 | 值 |
-|---|---|
-| Setup WNS / TNS / 违例端点 | **+84 ps / 0 / 0** |
-| Hold WNS / TNS / 违例端点 | **+20 ps / 0 / 0** |
-| `#slices` | 17687 / 21216 (83.37%) |
-| `#RAMs` | 60 |
-| `#DSPs` | 8 / 40 (20.00%) |
-| `#eram` | 60 / 108 (55.56%) |
-| `#lut6` | 14915 / 21216 (70.30%) |
-| `#IO` | 68 / 160 (42.50%) |
-| 比特流 | `camera_to_dsi_display.bit` 1789539 B |
-
----
-
-## 铁律
-
-1. **不要改 `mipi_to_raw_converter.v` 的 `BLACK_LEVEL`**（现在 `10'd56`，实测标定值，翻过两次车）。
-2. **不要改 `design_top_wrapper.v` 里 `S_blk_bypass` 的极性**（同样翻过车）。
-3. **不要在 RTL 里写 `a * b`**。TD 会推断成 DSP 硬核；芯片只有 40 个，历史上一次把整机 DSP 顶到 40/40 用满，
-   还连锁造成 5 个时序违例。乘常数要手写移位 + 加法。
-4. **`isp_gamma.v` 的内联 LUT 不要改成 `$readmemh`**。TD 综合工作目录是 run 目录，相对路径读不到 `.hex`
-   **而不报错**，表会全变 0、报告全绿、上板全黑。
-5. **不要推 `main`**，开 `feat/*` 分支走 PR。动 `design_top_wrapper.v` 就在 commit 首行写 `TOUCHES: design_top_wrapper.v`。
-6. **本地未推送的改动不超过 24 小时**。
-
----
-
-## 目录导航
-
-| 目录 | 内容 | 是否入库 |
+| 用途 | 目录 | bit md5 |
 |---|---|---|
-| `proj/baseline/lab3/` | **主战场**：RTL、约束、TD 工程 | ✅ |
-| `docs/` | 团队协作指南、时间表、队友 Prompt | ✅ |
-| `_analysis/scripts/` | 约 190 个 Python 工具（分析 / 补丁 / 验证 / LUT 生成） | ✅ |
-| `_analysis/lut/` | 色调曲线 LUT（`.hex` / `.mif` / `.coe` / `.vh` / `.csv`） | ✅ |
-| `_analysis/sim/` | ModelSim Testbench | ✅ |
-| `_analysis/*.md` | 设计文档（黑电平方案、色彩诊断、AE 可行性评估等） | ✅ |
-| `_analysis/out/` | 分析产物图片 | ❌ 已 gitignore |
-| `captures/` | **实拍采集归档**，按日期分组，每组一个 README | ✅ |
-| `tools/compare/` | `compare.py`（对比两张图并生成报告） | ✅ |
-| `raw_exports/` | ChipWatcher 导出 CSV | ✅ |
-| `HISTORY.md` / `MOVE_INDEX.md` | 提交历史转录 / 文件迁移索引 | ✅ |
-| `官方资料/` | 芯片手册、开发板手册、赛题文件、TD 安装包 | ❌ 体积过大（7 GB） |
-| `anlogic_example/` | 安路官方例程（lab1/2/3） | ❌ |
-| `_backup/` | 源码级与比特流备份 | ❌ |
-| `_archive/` | 归档 | ❌ |
+| **当前交付版** | `2026-10-18_a2_hold60` | `DB39A5CEB2D0D9A11C797EA6712708CA` |
+| 已知良好，可回滚 | `2026-10-18_a2_hold` | `8F17896E045B770AECE1E0AA75CA692C` |
+| 已知良好（P0 闭环最干净基线） | `2026-10-17_baseline_p0_closed` | `6CB52C8463FB6E96A7EC7DE69AE6E754` |
+| 原厂基线（未改过） | `lab3_vendor_2026-09-10` | `B12FF9AE…` |
+
+烧完必须**拔电 5 秒**重新上电（不是按复位键），因为摄像头 init 表与传感器状态只在冷启动时重来。
+
+## 还需要做的事
+
+| 项 | 状态 |
+|---|---|
+| 报告 §3.1 系统实物照片 / §3.2.2 开发板照片 | ⬜ 待拍（清单见对话记录） |
+| 三个创新关键词 | ⬜ 待定稿 |
+| 提交表单（GitHub 链接 `https://github.com/KXjtcbp/anlogic-ph1p35-isp`） | ⬜ 待填 |
+| 演示实拍视频 | ⬜ 计划 10-31 实验室录制 |
+
+## 目录速查
+
+| 想找 | 去 |
+|---|---|
+| RTL 源码 | `proj/baseline/lab3/user_source/hdl_source/` |
+| 约束（引脚 / 时序） | `proj/baseline/lab3/user_source/constraints_source/pin.adc`、`td_project/*.sdc` |
+| 交付与历史比特流 | `proj/releases/`（33 个） |
+| 分析脚本（约 190 个） | `_analysis/scripts/` |
+| LUT 表 | `_analysis/lut/` |
+| 仿真 TB | `_analysis/sim/` |
+| 采集证据 | `captures/` |
+| 交付文档 | 仓库根目录 |
+
+完整导航见 `MOVE_INDEX.md`。

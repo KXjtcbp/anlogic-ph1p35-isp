@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 """修正 sync_report_20261019.py 留下的两处问题：
 1) 摘要里「目标检测」被「运动目标检测」这个词骗过去，没真正补上；
 2) §3.2.3 的「（5）比特流版本台账」段被目标检测文案整段覆盖，版本台账丢失，需补回为（6）。
@@ -13,7 +13,7 @@ from docx.oxml.ns import qn
 from docx.shared import Pt
 from docx.text.paragraph import Paragraph
 
-F = r"E:\FPGA\比赛报告_填空版_20261019.docx"
+F = r"E:\FPGA\比赛报告_填空版_20261023.docx"
 d = Document(F)
 log = []
 

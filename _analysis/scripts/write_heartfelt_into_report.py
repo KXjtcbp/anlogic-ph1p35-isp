@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 """把去 AI 感后的心得体会四段写进比赛报告 §4.2。
 
 做法：定位「心得体会」标题段，用 insert_paragraph_before 在其后（即原
@@ -15,7 +15,7 @@ from docx.shared import Pt
 
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
-REPORT = r"E:\FPGA\比赛报告_填空版_20261019.docx"
+REPORT = r"E:\FPGA\比赛报告_填空版_20261023.docx"
 BACKUP = r"E:\FPGA\_backup\20261022_report_before_heartfelt.docx"
 
 CN, EN, PT = "宋体", "Times New Roman", 12

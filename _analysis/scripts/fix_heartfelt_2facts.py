@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 """就地修正报告 §4.2 里两条与事实不符/不确切的表述（不重新插入，只改已有段落）。
 
 1) 「怀疑是伽马参数不对，换了几组试」→ 点名真实换过的参数组
@@ -13,7 +13,7 @@ from docx import Document
 
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
-REPORT = r"E:\FPGA\比赛报告_填空版_20261019.docx"
+REPORT = r"E:\FPGA\比赛报告_填空版_20261023.docx"
 
 OLD1 = "后来又怀疑是伽马参数不对，换了几组试。"
 NEW1 = ("后来又怀疑是曲线参数不对，把拐点和强度换过几组，"

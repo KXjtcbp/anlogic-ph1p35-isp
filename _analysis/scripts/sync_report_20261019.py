@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 """把比赛报告同步到 2026-10-19 的实际进度。
 
 原则：只改与「当前实现/当前资源/已完成的验收」不一致的地方，不重写已完成章节。
@@ -16,7 +16,7 @@ from docx.shared import Pt
 
 WS = r"E:\FPGA"
 SRC = os.path.join(WS, "比赛报告_填空版_20261018.docx")
-DST = os.path.join(WS, "比赛报告_填空版_20261019.docx")
+DST = os.path.join(WS, "比赛报告_填空版_20261023.docx")
 BAK = os.path.join(WS, "_backup", "20261019_report_before_sync.docx")
 
 os.makedirs(os.path.dirname(BAK), exist_ok=True)

@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 """收尾修正：
 1) §2.3 的 (12) obj_detect 被插到了 (13) hdmi_mixer 之后，顺序错，需物理前移到 ae_ctrl 之后；
 2) 表 2 的「资源占用」「时序收敛」两行仍是旧数（slice 77.31% / LUT6 71.40% / WNS +102ps），
@@ -12,7 +12,7 @@ from docx import Document
 from docx.oxml.ns import qn
 from docx.shared import Pt
 
-F = r"E:\FPGA\比赛报告_填空版_20261019.docx"
+F = r"E:\FPGA\比赛报告_填空版_20261023.docx"
 d = Document(F)
 log = []
 

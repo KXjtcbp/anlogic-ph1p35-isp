@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 """QSPI 固化完成后同步三处文字：报告 §4.1（5）、HISTORY.md、给 B/C 的指南。
 
 事实基础（全部来自 BitWriter 日志与实测，不含推测）：
@@ -20,7 +20,7 @@ from docx.shared import Pt
 
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
-REPORT = r"E:\FPGA\比赛报告_填空版_20261019.docx"
+REPORT = r"E:\FPGA\比赛报告_填空版_20261023.docx"
 HISTORY = r"E:\FPGA\HISTORY.md"
 
 OLD = ("（5）QSPI 固化。赛题要求最终设计上电即可运行，不用 PC 下载。板载的 N25Q128 就是 FPGA "

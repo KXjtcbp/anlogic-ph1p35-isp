@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 """生成两份 Word 交付物：演示视频脚本 / 心得体会模板。"""
 import os
 import sys
